@@ -123,7 +123,7 @@ def main():
     # Data loading code
     traindir = os.path.join(args.data, 'train')
     valdir = os.path.join(args.data, 'val')
-    testdir = os.path.join(args.data, 'test')
+    # testdir = os.path.join(args.data, 'test')
     conceptdir_train = os.path.join(args.data, 'concept_train')
     conceptdir_test = os.path.join(args.data, 'concept_test')
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -162,40 +162,40 @@ def main():
         batch_size=args.batch_size, shuffle=True,
         num_workers=args.workers, pin_memory=False)
 
-    val_loader_2 = torch.utils.data.DataLoader(
-        datasets.ImageFolder('/usr/xtmp/zhichen/ConceptWhitening_git/ConceptWhitening/plot/airplane_bed_bench_boat_book_horse_person/resnet_cw18/1_rot_cw_top5', transforms.Compose([
-            transforms.Scale(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-        ])),
-        batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=False)
-    
-    test_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(testdir, transforms.Compose([
-            transforms.Scale(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-        ])),
-        batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=False)
+    # val_loader_2 = torch.utils.data.DataLoader(
+    #     datasets.ImageFolder('/usr/xtmp/zhichen/ConceptWhitening_git/ConceptWhitening/plot/airplane_bed_bench_boat_book_horse_person/resnet_cw18/1_rot_cw_top5', transforms.Compose([
+    #         transforms.Scale(256),
+    #         transforms.CenterCrop(224),
+    #         transforms.ToTensor(),
+    #         normalize,
+    #     ])),
+    #     batch_size=args.batch_size, shuffle=False,
+    #     num_workers=args.workers, pin_memory=False)
 
-    test_loader_with_path = torch.utils.data.DataLoader(
-        ImageFolderWithPaths(testdir, transforms.Compose([
-            transforms.Scale(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-        ])),
-        batch_size=args.batch_size, shuffle=True,
-        num_workers=args.workers, pin_memory=False)
+    # test_loader = torch.utils.data.DataLoader(
+    #     datasets.ImageFolder(testdir, transforms.Compose([
+    #         transforms.Scale(256),
+    #         transforms.CenterCrop(224),
+    #         transforms.ToTensor(),
+    #         normalize,
+    #     ])),
+    #     batch_size=args.batch_size, shuffle=False,
+    #     num_workers=args.workers, pin_memory=False)
+
+    # test_loader_with_path = torch.utils.data.DataLoader(
+    #     ImageFolderWithPaths(testdir, transforms.Compose([
+    #         transforms.Scale(256),
+    #         transforms.CenterCrop(224),
+    #         transforms.ToTensor(),
+    #         normalize,
+    #     ])),
+    #     batch_size=args.batch_size, shuffle=True,
+    #     num_workers=args.workers, pin_memory=False)
 
     if args.evaluate == False:
         print("Start training")
         best_prec1 = 0
-        for epoch in range(args.start_epoch, args.start_epoch + 4):
+        for epoch in range(args.start_epoch, args.start_epoch + 2):
             adjust_learning_rate(optimizer, epoch)
             
             # train for one epoch
@@ -217,7 +217,7 @@ def main():
                 'optimizer' : optimizer.state_dict(),
             }, is_best, args.prefix)
         print(best_prec1)
-        validate(test_loader, model, criterion, epoch)
+        # validate(test_loader, model, criterion, epoch)
     else:
         # model = load_resnet_model(args, arch = 'resnet_baseline', depth=args.depth, whitened_layer=args.whitened_layers)
         # print('resnet_orginal')
@@ -249,7 +249,8 @@ def main():
         # validate(test_loader, model, criterion, args.start_epoch)
         # print("Start Ploting")
         # plot_figures(args, model, test_loader_with_path, train_loader, concept_loaders, conceptdir_test)
-        saliency_map_concept_cover(args, val_loader_2, '1', arch='resnet_cw', dataset='places365', num_concepts=7)
+        # saliency_map_concept_cover(args, val_loader_2, '1', arch='resnet_cw', dataset='places365', num_concepts=7)
+        pass
 
 def train(train_loader, concept_loaders, model, criterion, optimizer, epoch):
     batch_time = AverageMeter()
@@ -538,7 +539,7 @@ def plot_figures(args, model, test_loader_with_path, train_loader, concept_loade
     # aucs_filter = plot_auc_filter(args, model, conceptdir, '8', plot_cpt = concept_name)
 
 def save_checkpoint(state, is_best, prefix, checkpoint_folder='./checkpoints'):
-    concept_name = '_'.join(args.concepts.split(','))
+    concept_name = '_'.join(args.concepts.split(',')) + 'cc'
     if not os.path.exists(os.path.join(checkpoint_folder,concept_name)):
         os.mkdir(os.path.join(checkpoint_folder,concept_name))
     filename = os.path.join(checkpoint_folder,concept_name,'%s_checkpoint.pth.tar'%prefix)
