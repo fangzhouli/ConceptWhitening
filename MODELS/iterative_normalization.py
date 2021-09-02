@@ -209,11 +209,25 @@ class IterNormRotation(torch.nn.Module):
     def update_rotation_matrix(self):
         """
         Update the rotation matrix R using the accumulated gradient G.
-        The update uses Cayley transform to make sure R is always orthonormal.
+
+        Concept coloring version. Set gradients within the same topic to be 0.
+        For preliminary result, we manually set them to 0.
+
+        Topic 1 - transportation: concepts 0-3, airplane,bicycle,car,train
+        Topic 2 - kitchen: concepts 4-6, dining_table,microwave,oven
+        Topic 3 - animals: concepts 7-8, cat,dog
         """
+
         size_R = self.running_rot.size()
         with torch.no_grad():
             G = self.sum_G/self.counter.reshape(-1,1)
+
+            G[:, 0:4, 0:4] = 0
+            G[:, 4:7, 4:7] = 0
+            G[:, 7:9, 7:9] = 0
+
+            print(G)
+
             R = self.running_rot.clone()
             for i in range(2):
                 tau = 1000 # learning rate in Cayley transform
