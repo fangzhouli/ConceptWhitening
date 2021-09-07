@@ -175,37 +175,7 @@ def main():
         batch_size=args.batch_size, shuffle=True,
         num_workers=args.workers, pin_memory=False)
 
-    # val_loader_2 = torch.utils.data.DataLoader(
-    #     datasets.ImageFolder('/usr/xtmp/zhichen/ConceptWhitening_git/ConceptWhitening/plot/airplane_bed_bench_boat_book_horse_person/resnet_cw18/1_rot_cw_top5', transforms.Compose([
-    #         transforms.Scale(256),
-    #         transforms.CenterCrop(224),
-    #         transforms.ToTensor(),
-    #         normalize,
-    #     ])),
-    #     batch_size=args.batch_size, shuffle=False,
-    #     num_workers=args.workers, pin_memory=False)
-
-    # test_loader = torch.utils.data.DataLoader(
-    #     datasets.ImageFolder(testdir, transforms.Compose([
-    #         transforms.Scale(256),
-    #         transforms.CenterCrop(224),
-    #         transforms.ToTensor(),
-    #         normalize,
-    #     ])),
-    #     batch_size=args.batch_size, shuffle=False,
-    #     num_workers=args.workers, pin_memory=False)
-
-    # test_loader_with_path = torch.utils.data.DataLoader(
-    #     ImageFolderWithPaths(testdir, transforms.Compose([
-    #         transforms.Scale(256),
-    #         transforms.CenterCrop(224),
-    #         transforms.ToTensor(),
-    #         normalize,
-    #     ])),
-    #     batch_size=args.batch_size, shuffle=True,
-    #     num_workers=args.workers, pin_memory=False)
-
-    if args.evaluate == False:
+    if args.evaluate is False:
         print("Start training")
         best_prec1 = 0
         for epoch in range(args.start_epoch, args.start_epoch + 2):
@@ -232,53 +202,18 @@ def main():
                 'optimizer': optimizer.state_dict(),
             }, is_best, args.prefix)
         print(best_prec1)
-        # validate(test_loader, model, criterion, epoch)
     else:
-        # model = load_resnet_model(args, arch = 'resnet_baseline', depth=args.depth, whitened_layer=args.whitened_layers)
-        # print('resnet_orginal')
-        # for loader in concept_loaders:
-        #     get_representation_distance_to_center(args, loader, '8', arch='resnet_original')
-        # print('resnet_cw')
-        # for loader in concept_loaders:
-        #     get_representation_distance_to_center(args, loader, '8', arch='resnet_cw')
-        # intra_concept_dot_product_vs_inter_concept_dot_product(args, conceptdir_test, '8', plot_cpt = args.concepts.split(','), arch='resnet_cw')
-        # intra_concept_dot_product_vs_inter_concept_dot_product(args, conceptdir_test, '8', plot_cpt = args.concepts.split(','), arch='resnet_baseline')
-        # intra_concept_dot_product_vs_inter_concept_dot_product(args, conceptdir_test, '8', plot_cpt = args.concepts.split(','), arch='resnet_original')
-
-        # print("Start testing")
-        # # model = load_resnet_model(args, arch = args.arch, depth=args.depth, whitened_layer='8')
-        # # validate(test_loader, model, criterion, args.start_epoch)
-        # model = load_resnet_model(args, arch = args.arch, depth=args.depth, whitened_layer='7')
-        # validate(test_loader, model, criterion, args.start_epoch)
-        # # model = load_resnet_model(args, arch = args.arch, depth=args.depth, whitened_layer='6')
-        # # validate(test_loader, model, criterion, args.start_epoch)
-        # model = load_resnet_model(args, arch = args.arch, depth=args.depth, whitened_layer='5')
-        # validate(test_loader, model, criterion, args.start_epoch)
-        # # model = load_resnet_model(args, arch = args.arch, depth=args.depth, whitened_layer='4')
-        # # validate(test_loader, model, criterion, args.start_epoch)
-        # model = load_resnet_model(args, arch = args.arch, depth=args.depth, whitened_layer='3')
-        # validate(test_loader, model, criterion, args.start_epoch)
-        # # model = load_resnet_model(args, arch = args.arch, depth=args.depth, whitened_layer='2')
-        # # validate(test_loader, model, criterion, args.start_epoch)
-        # model = load_resnet_model(args, arch = args.arch, depth=args.depth, whitened_layer='1')
-        # validate(test_loader, model, criterion, args.start_epoch)
-        # print("Start Ploting")
-        # plot_figures(args, model, test_loader_with_path, train_loader, concept_loaders, conceptdir_test)
-        # saliency_map_concept_cover(args, val_loader_2, '1', arch='resnet_cw', dataset='places365', num_concepts=7)
         print("Start testing")
         model = load_resnet_model(
             args, arch=args.arch, depth=args.depth, whitened_layer='7')
 
         print("Start Ploting")
-        times = ['20210903_073210','20210904_115816', '20210904_205429', '20210905_131108']
-        for time in times:
-            plot_figures(
-                args, model, val_loader, train_loader, concept_loaders,
-                conceptdir_test, time)
-        # saliency_map_concept_cover(
-        #     args, val_loader, '7', arch='resnet_cw', dataset='places365',
-        #     num_concepts=9)
-        pass
+        plot_figures(
+            args, model, val_loader, train_loader, concept_loaders,
+            conceptdir_test)
+        saliency_map_concept_cover(
+            args, val_loader, '7', arch='resnet_cw', dataset='places365',
+            num_concepts=9)
 
 
 def train(train_loader, concept_loaders, model, criterion, optimizer, epoch):
@@ -509,7 +444,8 @@ def train_baseline(train_loader, concept_loaders, model, criterion, optimizer, e
                   'Prec@5 {top5.val:.3f} ({top5.avg:.3f})\t'
                   'Prec_cpt@1 {top1_cpt.val:.3f} ({top1_cpt.avg:.3f})'.format(
                       epoch, i, len(train_loader), batch_time=batch_time,
-                      data_time=data_time, loss=losses, loss_a=loss_aux, top1=top1, top5=top5, top1_cpt=top1_cpt))
+                      data_time=data_time, loss=losses, loss_a=loss_aux,
+                      top1=top1, top5=top5, top1_cpt=top1_cpt))
 
 
 def plot_figures(

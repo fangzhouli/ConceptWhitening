@@ -15,7 +15,6 @@ torch.set_printoptions(profile="full")
 
 __all__ = ['iterative_normalization', 'IterNorm']
 
-__COUNTER__ = 0
 
 class iterative_normalization_py(torch.autograd.Function):
     @staticmethod
@@ -167,6 +166,7 @@ class IterNormRotation(torch.nn.Module):
         self.dim = dim
         self.mode = mode
         self.activation_mode = activation_mode
+        self.COUNT_ = 0
 
         assert num_groups == 1, 'Please keep num_groups = 1. Current version does not support group whitening.'
         if num_channels is None:
@@ -230,9 +230,9 @@ class IterNormRotation(torch.nn.Module):
             G[:, 0:4, 0:4] = 0
             G[:, 4:7, 4:7] = 0
             G[:, 7:9, 7:9] = 0
-            if __COUNTER__ < 5:
+            if self.COUNT_ < 5:
                 print(G)
-                __COUNTER__ += 1
+                self.COUNT_ += 1
 
             R = self.running_rot.clone()
             for i in range(2):
