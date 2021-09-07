@@ -264,8 +264,10 @@ def main():
         # validate(test_loader, model, criterion, args.start_epoch)
         # print("Start Ploting")
         # plot_figures(args, model, test_loader_with_path, train_loader, concept_loaders, conceptdir_test)
-        # saliency_map_concept_cover(args, val_loader_2, '1', arch='resnet_cw', dataset='places365', num_concepts=7)
-        pass
+        saliency_map_concept_cover(args, val_loader, '7', arch='resnet_cw', dataset='places365', num_concepts=9, time='20210903_073210')
+        saliency_map_concept_cover(args, val_loader, '7', arch='resnet_cw', dataset='places365', num_concepts=9, time='20210904_115816')
+        saliency_map_concept_cover(args, val_loader, '7', arch='resnet_cw', dataset='places365', num_concepts=9, time='20210904_205429')
+        saliency_map_concept_cover(args, val_loader, '7', arch='resnet_cw', dataset='places365', num_concepts=9, time='20210905_131108')
 
 
 def train(train_loader, concept_loaders, model, criterion, optimizer, epoch):

@@ -1277,14 +1277,15 @@ def saliency_map_concept(args, val_loader, layer, arch='resnet_cw', dataset='isi
             plt.close()
             outputs = []
 
-def saliency_map_concept_cover(args, val_loader, layer, arch='resnet_cw', dataset='isic', num_concepts=7):
+def saliency_map_concept_cover(args, val_loader, layer, arch='resnet_cw', dataset='isic', num_concepts=7, time=""):
     # dst = './plot/' + '_'.join(args.concepts.split(',')) + '/' + args.arch + str(args.depth) + '/saliency_map_concept_cover_fine_grain_2/'
-    dst = '/usr/xtmp/zhichen/temp_plots_layer1_3/'
+    # dst = '/usr/xtmp/zhichen/temp_plots_layer1_3/'
+    dst = "/share/taglab/Fang/concept-coloring-preliminary/plots/{}".format(time)
     try:
         os.mkdir(dst)
     except:
         pass
-    model = load_resnet_model(args, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
+    model = load_resnet_model(args, arch=arch, depth=18, whitened_layer=layer, dataset=dataset, time)
     #print(model)
     model.eval()
     model = model.module
@@ -1470,7 +1471,7 @@ def saliency_map_concept_cover_2(args, val_loader, layer, arch='resnet_cw', data
                 print("saved: " + str(j))
 
 
-def load_resnet_model(args, arch = 'resnet_original', depth=18, checkpoint_folder="./checkpoints", whitened_layer=None, dataset = 'places365'):
+def load_resnet_model(args, arch = 'resnet_original', depth=18, checkpoint_folder="./checkpoints", whitened_layer=None, dataset = 'places365', time=""):
     if dataset == 'places365':
         n_classes = 365
     elif dataset == 'isic':
@@ -1499,7 +1500,7 @@ def load_resnet_model(args, arch = 'resnet_original', depth=18, checkpoint_folde
                 checkpoint_name = '{}_{}_checkpoint.pth.tar'.format(prefix_name, whitened_layer)
         model = torch.nn.DataParallel(model, device_ids=list(range(args.ngpu)))
         model = model.cuda()
-        checkpoint_path = os.path.join(checkpoint_folder, concept_names, checkpoint_name)
+        checkpoint_path = os.path.join(checkpoint_folder, concept_names + "_{}".format(time), checkpoint_name)
         if os.path.isfile(checkpoint_path):
             print("=> loading checkpoint '{}'".format(checkpoint_path))
             checkpoint = torch.load(checkpoint_path)
