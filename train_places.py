@@ -265,6 +265,19 @@ def main():
         # print("Start Ploting")
         # plot_figures(args, model, test_loader_with_path, train_loader, concept_loaders, conceptdir_test)
         # saliency_map_concept_cover(args, val_loader_2, '1', arch='resnet_cw', dataset='places365', num_concepts=7)
+        print("Start testing")
+        model = load_resnet_model(
+            args, arch=args.arch, depth=args.depth, whitened_layer='7')
+
+        print("Start Ploting")
+        times = ['20210903_073210','20210904_115816', '20210904_205429', '20210905_131108']
+        for time in times:
+            plot_figures(
+                args, model, val_loader, train_loader, concept_loaders,
+                conceptdir_test, time)
+        # saliency_map_concept_cover(
+        #     args, val_loader, '7', arch='resnet_cw', dataset='places365',
+        #     num_concepts=9)
         pass
 
 
@@ -499,70 +512,48 @@ def train_baseline(train_loader, concept_loaders, model, criterion, optimizer, e
                       data_time=data_time, loss=losses, loss_a=loss_aux, top1=top1, top5=top5, top1_cpt=top1_cpt))
 
 
-def plot_figures(args, model, test_loader_with_path, train_loader, concept_loaders, conceptdir):
+def plot_figures(
+        args, model, test_loader_with_path, train_loader, concept_loaders,
+        conceptdir, time):
     concept_name = args.concepts.split(',')
 
-    if not os.path.exists('./plot/' + '_'.join(concept_name)):
-        os.mkdir('./plot/' + '_'.join(concept_name))
+    path_plots = './plots/' + '_'.join(concept_name) + "_{}/".format(time)
 
-    # print("Plot top50 activated images")
-    # model = load_resnet_model(args, arch = 'resnet_cw', depth=18, whitened_layer='1')
-    # plot_concept_top50(args, test_loader_with_path, model, '1', activation_mode = args.act_mode)
-    # model = load_resnet_model(args, arch = 'resnet_cw', depth=18, whitened_layer='4')
-    # plot_concept_top50(args, test_loader_with_path, model, '4', activation_mode = args.act_mode)
-    # model = load_resnet_model(args, arch = 'resnet_cw', depth=18, whitened_layer='5')
-    # plot_concept_top50(args, test_loader_with_path, model, '5', activation_mode = args.act_mode)
-    # model = load_resnet_model(args, arch = 'resnet_cw', depth=18, whitened_layer='6')
-    # plot_concept_top50(args, test_loader_with_path, model, '6', activation_mode = args.act_mode)
-    # model = load_resnet_model(args, arch = 'resnet_cw', depth=18, whitened_layer='7')
-    # plot_concept_top50(args, test_loader_with_path, model, '7', activation_mode = args.act_mode)
-    # model = load_resnet_model(args, arch = 'resnet_cw', depth=18, whitened_layer='8')
-    # plot_concept_top50(args, test_loader_with_path, model, '8', activation_mode = args.act_mode)
-    # print("Plot 2d slice of representation")
-    # plot_concept_representation(args, test_loader_with_path, model, '1', plot_cpt = [concept_name[1],concept_name[2]], activation_mode = args.act_mode)
-    # plot_top10(args, plot_cpt = concept_name, layer = 1)
-    # plot_top10(args, plot_cpt = concept_name, layer = 8)
+    if not os.path.exists(path_plots):
+        os.mkdir(path_plots)
 
-    # model = load_resnet_model(args, arch = 'resnet_cw', depth=18, whitened_layer='8')
-    # print("Plot top50 activated images")
-    # plot_concept_top50(args, test_loader_with_path, model, '8', activation_mode = args.act_mode)
-    # print("Plot 2d slice of representation")
-    # plot_concept_representation(args, test_loader_with_path, model, '8', plot_cpt = [concept_name[1],concept_name[2]], activation_mode = args.act_mode)
-    # plot_top10(args, plot_cpt = concept_name, layer = 8)
+    print("Plot top50 activated images")
+    plot_concept_top50(
+        args, test_loader_with_path, model, '7', path_plots,
+        activation_mode=args.act_mode)
 
-    # print("Plot correlation")
-    # model = load_resnet_model(args, arch = 'resnet_cw', depth=18, whitened_layer='8')
-    # args.arch = 'resnet_cw'
-    # plot_correlation(args, test_loader_with_path, model, 8)
-    # args.arch = 'resnet_original'
-    # model = load_resnet_model(args, arch = 'resnet_original', depth=18)
-    # plot_correlation(args, test_loader_with_path, model, 8)
-    # model = load_resnet_model(args, arch = 'resnet_baseline', depth=18, whitened_layer='8')
-    # args.arch = 'resnet_baseline'
-    # plot_correlation(args, test_loader_with_path, model, 8)
+    print("Plot 2d slice of representation within the same topic")
+    plot_concept_representation(
+        args, test_loader_with_path, model, '7', path_plots,
+        plot_cpt=[concept_name[1], concept_name[2]],
+        activation_mode=args.act_mode)
+
+    print("Plot 2d slice of representation within different topics")
+    plot_concept_representation(
+        args, test_loader_with_path, model, '7', path_plots,
+        plot_cpt=[concept_name[1], concept_name[8]],
+        activation_mode=args.act_mode)
+
+    print("Plot correlation")
+    plot_correlation(
+        args, test_loader_with_path, model, 7, path_plots)
 
     # print("Plot trajectory")
-    # args.arch = 'resnet_cw'
-    # plot_trajectory(args, test_loader_with_path, '1,2,3,4,5,6,7,8', plot_cpt = [concept_name[0],concept_name[1]])
+    # plot_trajectory(
+    #     args, test_loader_with_path, '1,2,3,4,5,6,7,8',
+    #     plot_cpt=[concept_name[0], concept_name[1]])
 
     # print("Plot AUC-concept_purity")
-    # aucs_cw = plot_auc_cw(args, conceptdir, '1,2,3,4,5,6,7,8', plot_cpt = concept_name, activation_mode = args.act_mode)
-    # print("Running AUCs svm")
-    # model = load_resnet_model(args, arch='resnet_original', depth=18)
-    # aucs_svm = plot_auc_lm(args, model, concept_loaders, train_loader, conceptdir, '1,2,3,4,5,6,7,8', plot_cpt = concept_name, model_type = 'svm')
-    # print("Running AUCs lr")
-    # model = load_resnet_model(args, arch='resnet_original', depth=18)
-    # aucs_lr = plot_auc_lm(args, model, concept_loaders, train_loader, conceptdir, '1,2,3,4,5,6,7,8', plot_cpt = concept_name, model_type = 'lr')
-    print("Running AUCs best filter")
-    model = load_resnet_model(args, arch='resnet_original', depth=18)
-    aucs_filter = plot_auc_filter(
-        args, model, conceptdir, '1,2,3,4,5,6,7,8', plot_cpt=concept_name)
-    print("AUC plotting")
-    # plot_auc(args, 0, 0, 0, 0, plot_cpt = concept_name)
-    # print("End plotting")
-    # model = load_resnet_model(args, arch = 'resnet_baseline', depth=18, whitened_layer='8')
-    # print("Running AUCs best filter")
-    # aucs_filter = plot_auc_filter(args, model, conceptdir, '8', plot_cpt = concept_name)
+    # aucs_cw = plot_auc_cw(
+    #     args, conceptdir, '1,2,3,4,5,6,7,8', plot_cpt=concept_name,
+    #     activation_mode=args.act_mode)
+
+    print("End plotting")
 
 
 def save_checkpoint(state, is_best, prefix, checkpoint_folder='./checkpoints'):
