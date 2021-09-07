@@ -4,13 +4,17 @@ Reference:  Iterative Normalization: Beyond Standardization towards Efficient Wh
 - Paper:
 - Code: https://github.com/huangleiBuaa/IterNorm
 """
+import torch
 import torch.nn
 import torch.nn.functional as F
 from torch.nn import Parameter
 
+torch.set_printoptions(profile="full")
+
 # import extension._bcnn as bcnn
 
 __all__ = ['iterative_normalization', 'IterNorm']
+
 
 class iterative_normalization_py(torch.autograd.Function):
     @staticmethod
@@ -162,6 +166,7 @@ class IterNormRotation(torch.nn.Module):
         self.dim = dim
         self.mode = mode
         self.activation_mode = activation_mode
+        self.COUNT_ = 0
 
         assert num_groups == 1, 'Please keep num_groups = 1. Current version does not support group whitening.'
         if num_channels is None:
@@ -225,8 +230,9 @@ class IterNormRotation(torch.nn.Module):
             G[:, 0:4, 0:4] = 0
             G[:, 4:7, 4:7] = 0
             G[:, 7:9, 7:9] = 0
-
-            print(G)
+            if self.COUNT_ < 5:
+                print(G)
+                self.COUNT_ += 1
 
             R = self.running_rot.clone()
             for i in range(2):
