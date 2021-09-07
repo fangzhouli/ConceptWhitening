@@ -4,13 +4,18 @@ Reference:  Iterative Normalization: Beyond Standardization towards Efficient Wh
 - Paper:
 - Code: https://github.com/huangleiBuaa/IterNorm
 """
+import torch
 import torch.nn
 import torch.nn.functional as F
 from torch.nn import Parameter
 
+torch.set_printoptions(profile="full")
+
 # import extension._bcnn as bcnn
 
 __all__ = ['iterative_normalization', 'IterNorm']
+
+__COUNTER__ = 0
 
 class iterative_normalization_py(torch.autograd.Function):
     @staticmethod
@@ -225,8 +230,9 @@ class IterNormRotation(torch.nn.Module):
             G[:, 0:4, 0:4] = 0
             G[:, 4:7, 4:7] = 0
             G[:, 7:9, 7:9] = 0
-
-            print(G)
+            if __COUNTER__ < 5:
+                print(G)
+                __COUNTER__ += 1
 
             R = self.running_rot.clone()
             for i in range(2):
