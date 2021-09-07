@@ -265,13 +265,21 @@ def main():
         # print("Start Ploting")
         # plot_figures(args, model, test_loader_with_path, train_loader, concept_loaders, conceptdir_test)
         # saliency_map_concept_cover(args, val_loader_2, '1', arch='resnet_cw', dataset='places365', num_concepts=7)
-        print("Start testing")
-        model = load_resnet_model(
-            args, arch=args.arch, depth=args.depth, whitened_layer='7')
 
         print("Start Ploting")
-        times = ['20210903_073210','20210904_115816', '20210904_205429', '20210905_131108']
+        times = ['20210903_073210',
+                 '20210904_115816',
+                 '20210904_205429',
+                 '20210905_131108']
         for time in times:
+            print("Loading model {}_{}".format(
+                '_'.join(args.concepts.split(',')),
+                time))
+
+            model = load_resnet_model(
+                args, arch=args.arch, depth=args.depth, whitened_layer='7',
+                time=time)
+
             plot_figures(
                 args, model, val_loader, train_loader, concept_loaders,
                 conceptdir_test, time)

@@ -1491,13 +1491,16 @@ def saliency_map_concept_cover_2(args, val_loader, layer, arch='resnet_cw', data
                 print("saved: " + str(j))
 
 
-def load_resnet_model(args, arch = 'resnet_original', depth=18, checkpoint_folder="./checkpoints", whitened_layer=None, dataset = 'places365'):
+def load_resnet_model(
+        args, arch='resnet_original', depth=18,
+        checkpoint_folder="./checkpoints", whitened_layer=None,
+        dataset='places365', time=""):
     if dataset == 'places365':
         n_classes = 365
     elif dataset == 'isic':
         n_classes = 2
     prefix_name = args.prefix[:args.prefix.rfind('_')]
-    
+
     model = None
     if arch == 'resnet_original':
         if depth == 50:
@@ -1506,21 +1509,29 @@ def load_resnet_model(args, arch = 'resnet_original', depth=18, checkpoint_folde
             model = ResidualNetBN(n_classes, args, arch = 'resnet18', layers = [2, 2, 2, 2], model_file=os.path.join(checkpoint_folder, 'resnet18_{}.pth.tar'.format(dataset)))
         model = torch.nn.DataParallel(model, device_ids=list(range(args.ngpu)))
         model = model.cuda()
+
     elif arch == 'resnet_cw':
         concept_names = '_'.join(args.concepts.split(','))
-        if whitened_layer == None:
+        if whitened_layer is None:
             raise Exception("whitened_layer argument is required")
         else:
             if depth == 50:
                 model = ResidualNetTransfer(n_classes, args, [int(whitened_layer)], arch = 'resnet50', layers = [3, 4, 6, 3], model_file=os.path.join(checkpoint_folder, 'resnet50_{}.pth.tar'.format(dataset)))
                 checkpoint_name = '{}_{}_model_best.pth.tar'.format(prefix_name, whitened_layer)
+
             elif depth == 18:
-                model = ResidualNetTransfer(n_classes, args, [int(whitened_layer)], arch = 'resnet18', layers = [2, 2, 2, 2], model_file=os.path.join(checkpoint_folder, 'resnet18_{}.pth.tar'.format(dataset)))
-                # model = ResidualNetTransfer(n_classes, args, [int(whitened_layer)], arch = 'resnet18', layers = [2, 2, 2, 2], model_file=None)
-                checkpoint_name = '{}_{}_checkpoint.pth.tar'.format(prefix_name, whitened_layer)
+                model = ResidualNetTransfer(
+                    n_classes, args, [int(whitened_layer)], arch='resnet18',
+                    layers=[2, 2, 2, 2],
+                    model_file=os.path.join(
+                        checkpoint_folder,
+                        'resnet18_{}.pth.tar'.format(dataset)))
+                checkpoint_name = '{}_{}_checkpoint.pth.tar'.format(
+                    prefix_name, whitened_layer)
         model = torch.nn.DataParallel(model, device_ids=list(range(args.ngpu)))
         model = model.cuda()
-        checkpoint_path = os.path.join(checkpoint_folder, concept_names, checkpoint_name)
+        checkpoint_path = os.path.join(
+            checkpoint_folder, concept_names, checkpoint_name)
         if os.path.isfile(checkpoint_path):
             print("=> loading checkpoint '{}'".format(checkpoint_path))
             checkpoint = torch.load(checkpoint_path)
