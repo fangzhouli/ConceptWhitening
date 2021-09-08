@@ -1531,7 +1531,7 @@ def load_resnet_model(
         model = torch.nn.DataParallel(model, device_ids=list(range(args.ngpu)))
         model = model.cuda()
         checkpoint_path = os.path.join(
-            checkpoint_folder, concept_names, checkpoint_name)
+            checkpoint_folder, concept_names + '_' + time, checkpoint_name)
         if os.path.isfile(checkpoint_path):
             print("=> loading checkpoint '{}'".format(checkpoint_path))
             checkpoint = torch.load(checkpoint_path)
