@@ -129,7 +129,7 @@ def plot_concept_top50(
                 os.mkdir(output_path)
             paths = []
             vals = None
-            for i, (input, _, path) in enumerate(val_loader):
+            for i, (input, path) in enumerate(val_loader):
                 paths += list(path)
                 input_var = torch.autograd.Variable(input).cuda()
                 outputs = []
