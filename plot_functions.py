@@ -1014,16 +1014,17 @@ def plot_concept_representation(
                         img_merge[i*img_size:(i+1)*img_size, j*img_size:(j+1)*img_size,:] = np.asarray(I)
             plt.figure()
             plt.imshow(img_merge.astype(np.int32))
-            plt.xlabel(plot_cpt[1])
-            plt.ylabel(plot_cpt[0])
+            plt.xlabel(plot_cpt[0])
+            plt.ylabel(plot_cpt[1])
             plt.savefig(dst+'layer'+layer+'_'+'_'.join(plot_cpt)+'.jpg',dpi=img_size*n_grid//4)
             plt.figure()
             ax = sns.heatmap(cnt/cnt.sum(), linewidth=0.5)
-            plt.xlabel(plot_cpt[1])
-            plt.ylabel(plot_cpt[0])
+            plt.xlabel(plot_cpt[0])
+            plt.ylabel(plot_cpt[1])
 
             plt.savefig(dst + 'density_layer' + layer + '_'
                         + '_'.join(plot_cpt) + '.jpg')
+            torch.cuda.empty_cache()
 
     return 0
 
