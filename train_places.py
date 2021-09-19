@@ -532,24 +532,31 @@ def plot_figures(
         args, test_loader_with_path, model, '7', path_plots,
         activation_mode=args.act_mode)
 
+    print("Plot 2d slice of representation within the same topic")
     for iter1 in range(0, len(args.concepts.split(','))):
         for iter2 in range(0, len(args.concepts.split(','))):
-            print("Plot 2d slice of representation within the same topic")
-            plot_concept_representation(
-                args, test_loader_with_path, model, '7', path_plots,
-                plot_cpt=[concept_name[iter1], concept_name[iter2]],
-                activation_mode=args.act_mode)
+            if iter1==iter2:
+                continue
+            else:
+                print("Concepts: {} :: {}".format(args.concepts.split(',')[iter1], args.concepts.split(',')[iter2]))
+                plot_concept_representation(
+                    args, test_loader_with_path, model, '7', path_plots,
+                    plot_cpt=[concept_name[iter1], concept_name[iter2]],
+                    activation_mode=args.act_mode)
 
     print("Plot correlation")
-    plot_correlation(
-        args, test_loader_with_path, model, 7, path_plots)
+    plot_correlation(args, test_loader_with_path, model, 7, path_plots)
 
     print("Plot trajectory")
     for iter1 in range(0, len(args.concepts.split(','))):
         for iter2 in range(0, len(args.concepts.split(','))):
-            plot_trajectory(
-                args, time, test_loader_with_path, '7', path_plots,
-                plot_cpt=[concept_name[iter1], concept_name[iter2]])
+            if iter1==iter2:
+                continue
+            else:
+                print("Concepts: {} :: {}".format(args.concepts.split(',')[iter1], args.concepts.split(',')[iter2]))
+                plot_trajectory(
+                    args, time, test_loader_with_path, '7', path_plots,
+                    plot_cpt=[concept_name[iter1], concept_name[iter2]])
 
     print("Plot AUC-concept_purity")
     aucs_cw = plot_auc_cw(
