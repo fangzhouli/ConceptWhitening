@@ -537,7 +537,7 @@ def plot_figures(
             print("Plot 2d slice of representation within the same topic")
             plot_concept_representation(
                 args, test_loader_with_path, model, '7', path_plots,
-                plot_cpt=[concept_name[i], concept_name[j]],
+                plot_cpt=[concept_name[iter1], concept_name[iter2]],
                 activation_mode=args.act_mode)
 
     print("Plot correlation")
