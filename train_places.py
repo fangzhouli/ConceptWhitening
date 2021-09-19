@@ -5,6 +5,7 @@ import gc
 import shutil
 import time
 import random
+import itertools
 import numpy as np
 
 import torch
@@ -532,24 +533,24 @@ def plot_figures(
         args, test_loader_with_path, model, '7', path_plots,
         activation_mode=args.act_mode)
 
-    for iter1 in range(0, len(args.concepts.split(','))):
-        for iter2 in range(0, len(args.concepts.split(','))):
-            print("Plot 2d slice of representation within the same topic")
-            plot_concept_representation(
-                args, test_loader_with_path, model, '7', path_plots,
-                plot_cpt=[concept_name[i], concept_name[j]],
-                activation_mode=args.act_mode)
+    pairs = list(itertools.combinations(concepts_test, 2))
+    
+    print("Plot 2d slice of representation within the same topic")
+    for pair in pairs:
+        print("Concepts: {} :: {}".format(pair[0], pair[1]))
+        plot_concept_representation(
+            args, test_loader_with_path, model, '7', path_plots,
+            plot_cpt=[pair[0], pair[1]], activation_mode=args.act_mode)
 
     print("Plot correlation")
-    plot_correlation(
-        args, test_loader_with_path, model, 7, path_plots)
+    plot_correlation(args, test_loader_with_path, model, 7, path_plots)
 
     print("Plot trajectory")
-    for iter1 in range(0, len(args.concepts.split(','))):
-        for iter2 in range(0, len(args.concepts.split(','))):
-            plot_trajectory(
-                args, time, test_loader_with_path, '7', path_plots,
-                plot_cpt=[concept_name[iter1], concept_name[iter2]])
+    for pair in pairs:
+        print("Concepts: {} :: {}".format(pair[0], pair[1]))
+        plot_trajectory(
+            args, time, test_loader_with_path, '7', path_plots,
+            plot_cpt=[pair[0], pair[1]])
 
     print("Plot AUC-concept_purity")
     aucs_cw = plot_auc_cw(
