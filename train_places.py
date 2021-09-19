@@ -136,7 +136,7 @@ def main():
     # Data loading code
     traindir = os.path.join(args.data, 'train')
     valdir = os.path.join(args.data, 'val')
-    # testdir = os.path.join(args.data, 'test')
+    testdir = os.path.join(args.data, 'test')
     conceptdir_train = os.path.join(args.data, 'concept_train')
     conceptdir_test = os.path.join(args.data, 'concept_test')
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -154,26 +154,30 @@ def main():
 
     concept_loaders = [
         torch.utils.data.DataLoader(
-            datasets.ImageFolder(os.path.join(conceptdir_train, concept), transforms.Compose([
-                transforms.RandomSizedCrop(224),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                normalize,
-            ])),
-            batch_size=args.batch_size, shuffle=True,
-            num_workers=args.workers, pin_memory=False)
-        for concept in args.concepts.split(',')
-    ]
+            datasets.ImageFolder(
+                os.path.join(conceptdir_train, concept),
+                transforms.Compose([
+                    transforms.RandomSizedCrop(224),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    normalize])),
+            batch_size=args.batch_size,
+            shuffle=False,
+            num_workers=args.workers,
+            pin_memory=False) for concept in args.concepts.split(',')]
 
     val_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(valdir, transforms.Compose([
-            transforms.Scale(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-        ])),
-        batch_size=args.batch_size, shuffle=True,
-        num_workers=args.workers, pin_memory=False)
+        datasets.ImageFolder(
+            valdir,
+            transforms.Compose([
+                transforms.Scale(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                normalize])),
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.workers,
+        pin_memory=False)
 
     # val_loader_2 = torch.utils.data.DataLoader(
     #     datasets.ImageFolder('/usr/xtmp/zhichen/ConceptWhitening_git/ConceptWhitening/plot/airplane_bed_bench_boat_book_horse_person/resnet_cw18/1_rot_cw_top5', transforms.Compose([
@@ -262,19 +266,21 @@ def main():
         # # validate(test_loader, model, criterion, args.start_epoch)
         # model = load_resnet_model(args, arch = args.arch, depth=args.depth, whitened_layer='1')
         # validate(test_loader, model, criterion, args.start_epoch)
-        # print("Start Ploting")
+        # print("Start Plotting")
         # plot_figures(args, model, test_loader_with_path, train_loader, concept_loaders, conceptdir_test)
         # saliency_map_concept_cover(args, val_loader_2, '1', arch='resnet_cw', dataset='places365', num_concepts=7)
-        print("Start testing")
-        model = load_resnet_model(
-            args, arch=args.arch, depth=args.depth, whitened_layer='7')
 
-        print("Start Ploting")
-        times = ['20210903_073210','20210904_115816', '20210904_205429', '20210905_131108']
+        print("Start Plotting")
+        times = ['20210903_073210',
+                 '20210904_115816',
+                 '20210904_205429',
+                 '20210905_131108']
         for time in times:
-            plot_figures(
-                args, model, val_loader, train_loader, concept_loaders,
-                conceptdir_test, time)
+            print("Loading model {}_{}".format('_'.join(args.concepts.split(',')),time))
+
+            model = load_resnet_model(args, time, arch=args.arch, depth=args.depth, whitened_layer='7')
+
+            plot_figures(args, model, val_loader, train_loader, concept_loaders, conceptdir_test, time)
         # saliency_map_concept_cover(
         #     args, val_loader, '7', arch='resnet_cw', dataset='places365',
         #     num_concepts=9)
@@ -518,7 +524,6 @@ def plot_figures(
     concept_name = args.concepts.split(',')
 
     path_plots = './plots/' + '_'.join(concept_name) + "_{}/".format(time)
-
     if not os.path.exists(path_plots):
         os.mkdir(path_plots)
 
@@ -527,31 +532,29 @@ def plot_figures(
         args, test_loader_with_path, model, '7', path_plots,
         activation_mode=args.act_mode)
 
-    print("Plot 2d slice of representation within the same topic")
-    plot_concept_representation(
-        args, test_loader_with_path, model, '7', path_plots,
-        plot_cpt=[concept_name[1], concept_name[2]],
-        activation_mode=args.act_mode)
-
-    print("Plot 2d slice of representation within different topics")
-    plot_concept_representation(
-        args, test_loader_with_path, model, '7', path_plots,
-        plot_cpt=[concept_name[1], concept_name[8]],
-        activation_mode=args.act_mode)
+    for iter1 in range(0, len(args.concepts.split(','))):
+        for iter2 in range(0, len(args.concepts.split(','))):
+            print("Plot 2d slice of representation within the same topic")
+            plot_concept_representation(
+                args, test_loader_with_path, model, '7', path_plots,
+                plot_cpt=[concept_name[i], concept_name[j]],
+                activation_mode=args.act_mode)
 
     print("Plot correlation")
     plot_correlation(
         args, test_loader_with_path, model, 7, path_plots)
 
-    # print("Plot trajectory")
-    # plot_trajectory(
-    #     args, test_loader_with_path, '1,2,3,4,5,6,7,8',
-    #     plot_cpt=[concept_name[0], concept_name[1]])
+    print("Plot trajectory")
+    for iter1 in range(0, len(args.concepts.split(','))):
+        for iter2 in range(0, len(args.concepts.split(','))):
+            plot_trajectory(
+                args, time, test_loader_with_path, '7', path_plots,
+                plot_cpt=[concept_name[iter1], concept_name[iter2]])
 
-    # print("Plot AUC-concept_purity")
-    # aucs_cw = plot_auc_cw(
-    #     args, conceptdir, '1,2,3,4,5,6,7,8', plot_cpt=concept_name,
-    #     activation_mode=args.act_mode)
+    print("Plot AUC-concept_purity")
+    aucs_cw = plot_auc_cw(
+        args, time, conceptdir, '7', path_plots, 
+        plot_cpt=concept_name, activation_mode=args.act_mode)
 
     print("End plotting")
 

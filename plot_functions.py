@@ -120,7 +120,6 @@ def plot_concept_top50(
     concepts = args.concepts.split(',')
     with torch.no_grad():
         for k in range(begin, end):
-            print(k)
             if k < len(concepts):
                 output_path = os.path.join(folder, concepts[k])
             else:
@@ -129,8 +128,12 @@ def plot_concept_top50(
                 os.mkdir(output_path)
             paths = []
             vals = None
-            for i, (input, _, path) in enumerate(val_loader):
-                paths += list(path)
+            #print(val_loader)
+            #TMP = iter(val_loader)
+            #print(next(TMP))
+            for i, (input, label) in enumerate(val_loader):
+                path, _ = val_loader.dataset.samples[i]
+                paths.append(path)
                 input_var = torch.autograd.Variable(input).cuda()
                 outputs = []
                 model(input_var)
@@ -167,83 +170,84 @@ def plot_concept_top50(
 
             for i, layer in enumerate(layer_list):
                 arr = list(zip(list(vals[i,:]),list(paths)))
+                #import pickle
+                #with open('E:/Concept Coloring/test_vars.pkl', 'wb') as f:
+                #    pickle.dump([list(vals[i,:]), list(paths)], f)
+                
                 arr.sort(key = lambda t: t[0], reverse = True)
                 # arr.sort(key = lambda t: t[0], reverse = False)
                 # with open('76dim.txt', 'w') as f:
                 #     for item in arr:
                 #         f.write(item[1]+'\n')
 
-                for j in range(5):
+                for j in range(50):
                     src = arr[j][1]
-                    copyfile(
-                        src,
-                        output_path + '/' + 'layer' + layer + '_'
-                        + str(j + 1) + '.jpg')
+                    output_fn = output_path + '/' + 'layer' + layer + '_' + str(j + 1) + '.jpg'
+                    copyfile(src, output_fn)
     return 0
 
 
-# def get_layer_representation(args, val_loader, layer, cpt_idx):
-#     """This method gets the activations of output from iternorm_rotation for
-#     images (from val_loader) at channel (cpt_idx)
+def get_layer_representation(args, val_loader, layer, cpt_idx, time):
+    """This method gets the activations of output from iternorm_rotation for
+    images (from val_loader) at channel (cpt_idx)
+    """
+    model = load_resnet_model(args, time, arch='resnet_cw', depth=18, whitened_layer=layer)
 
-#     """
-#     model = load_resnet_model(
-#         args, arch='resnet_cw', depth=18, whitened_layer=layer)
+    with torch.no_grad():
+        model.eval()
+        model = model.module
+        layers = model.layers
+        if args.arch == "resnet_cw":
+            model = model.model
+        outputs = []
 
-#     with torch.no_grad():
-#         model.eval()
-#         model = model.module
-#         layers = model.layers
-#         if args.arch == "resnet_cw":
-#             model = model.model
-#         outputs = []
+        def hook(module, input, output):
+            from MODELS.iterative_normalization import (
+                iterative_normalization_py)
 
-#         def hook(module, input, output):
-#             from MODELS.iterative_normalization import (
-#                 iterative_normalization_py)
+            # print(input)
+            X_hat = iterative_normalization_py.apply(
+                input[0], module.running_mean, module.running_wm,
+                module.num_channels, module.T, module.eps, module.momentum,
+                module.training)
+            size_X = X_hat.size()
+            size_R = module.running_rot.size()
+            X_hat = X_hat.view(size_X[0], size_R[0], size_R[2], *size_X[2:])
 
-#             # print(input)
-#             X_hat = iterative_normalization_py.apply(
-#                 input[0], module.running_mean, module.running_wm,
-#                 odule.num_channels, module.T, module.eps, module.momentum,
-#                 module.training)
-#             size_X = X_hat.size()
-#             size_R = module.running_rot.size()
-#             X_hat = X_hat.view(size_X[0], size_R[0], size_R[2], *size_X[2:])
+            X_hat = torch.einsum('bgchw,gdc->bgdhw', X_hat, module.running_rot)
+            # print(size_X)
+            X_hat = X_hat.view(*size_X)
 
-#             X_hat = torch.einsum('bgchw,gdc->bgdhw', X_hat, module.running_rot)
-#             # print(size_X)
-#             X_hat = X_hat.view(*size_X)
+            outputs.append(X_hat.cpu().numpy())
 
-#             outputs.append(X_hat.cpu().numpy())
+        layer = int(layer)
+        if layer <= layers[0]:
+            model.layer1[layer-1].bn1.register_forward_hook(hook)
+        elif layer <= layers[0] + layers[1]:
+            model.layer2[layer-layers[0]-1].bn1.register_forward_hook(hook)
+        elif layer <= layers[0] + layers[1] + layers[2]:
+            model.layer3[layer-layers[0]-layers[1]-1].bn1.register_forward_hook(hook)
+        elif layer <= layers[0] + layers[1] + layers[2] + layers[3]:
+            model.layer4[layer-layers[0]-layers[1]-layers[2]-1].bn1.register_forward_hook(hook)
 
-#         layer = int(layer)
-#         if layer <= layers[0]:
-#             model.layer1[layer-1].bn1.register_forward_hook(hook)
-#         elif layer <= layers[0] + layers[1]:
-#             model.layer2[layer-layers[0]-1].bn1.register_forward_hook(hook)
-#         elif layer <= layers[0] + layers[1] + layers[2]:
-#             model.layer3[layer-layers[0]-layers[1]-1].bn1.register_forward_hook(hook)
-#         elif layer <= layers[0] + layers[1] + layers[2] + layers[3]:
-#             model.layer4[layer-layers[0]-layers[1]-layers[2]-1].bn1.register_forward_hook(hook)
-
-#         paths = []
-#         vals = None
-#         for i, (input, _, path) in enumerate(val_loader):
-#             paths += list(path)
-#             input_var = torch.autograd.Variable(input).cuda()
-#             outputs = []
-#             model(input_var)
-#             val = []
-#             for output in outputs:
-#                 val.append(output.sum((2,3))[:, cpt_idx])
-#             val = np.array(val)
-#             if i == 0:
-#                 vals = val
-#             else:
-#                 vals = np.concatenate((vals,val),1)
-#     del model
-#     return paths, vals
+        paths = []
+        vals = None
+        for i, (input, path) in enumerate(val_loader):
+            path = val_loader.dataset.samples[i]
+            paths.append(path)
+            input_var = torch.autograd.Variable(input).cuda()
+            outputs = []
+            model(input_var)
+            val = []
+            for output in outputs:
+                val.append(output.sum((2,3))[:, cpt_idx])
+            val = np.array(val)
+            if i == 0:
+                vals = val
+            else:
+                vals = np.concatenate((vals,val),1)
+    del model
+    return paths, vals
 
 
 # # This method obtains the vector length of a representation (distance to origin)
@@ -438,185 +442,182 @@ def plot_concept_top50(
 # '''
 #     This function plots the relative activations of a image on two different concepts. 
 # '''
-# def plot_trajectory(args, val_loader, whitened_layers, plot_cpt = ['airplane','bed']):
-#     dst = './plot/' + '_'.join(args.concepts.split(',')) + '/' + args.arch + str(args.depth) + '/trajectory_all/'
-#     if not os.path.exists(dst):
-#         os.mkdir(dst)
-#     concepts = args.concepts.split(',')
-#     cpt_idx = [concepts.index(plot_cpt[0]),concepts.index(plot_cpt[1])]
-#     vals = None 
-#     layer_list = whitened_layers.split(',')
-#     for i, layer in enumerate(layer_list):
-#         #print(i)
-#         if i == 0:
-#             paths, vals = get_layer_representation(args, val_loader, layer, cpt_idx)
-#         else:
-#             _, val = get_layer_representation(args, val_loader, layer, cpt_idx)
-#             vals = np.concatenate((vals,val),0)
-#         #print(vals.shape)
-#     try:
-#         os.mkdir('{}{}'.format(dst,'_'.join(plot_cpt)))
-#     except:
-#         pass
+def plot_trajectory(args, time, val_loader, whitened_layers, path_plots, plot_cpt = ['airplane','bed']):
+    dst = path_plots + '/trajectory_all/'
+    if not os.path.exists(dst):
+        os.mkdir(dst)
 
-#     num_examples = vals.shape[1]
-#     num_layers = vals.shape[0]
-#     max_vals = np.amax(vals, axis=1)
-#     min_vals = np.amin(vals, axis=1)
-#     vals = vals.transpose((1,0,2))
-#     # vals = (vals - min_vals)/(max_vals-min_vals)
-#     sort_idx = vals.argsort(0)
-#     for i in range(num_layers):
-#         for j in range(2):
-#             vals[sort_idx[:,i,j],i,j] = np.arange(num_examples)/num_examples
-#     idx = np.arange(num_examples)
-#     np.random.shuffle(idx)
-#     for k, i in enumerate(idx):
-#         #print(k)
-#         if k==300:
-#             break
-#         fig = plt.figure(figsize=(10,5))
-#         ax2 = plt.subplot(1,2,2)
-#         ax2.set_xlim([0.0,1.0])
-#         ax2.set_ylim([0.0,1.0])
-#         ax2.set_xlabel(plot_cpt[0])
-#         ax2.set_ylabel(plot_cpt[1])
-#         plt.scatter(vals[i,:,0],vals[i,:,1])
-#         start_x = vals[i,0,0]
-#         start_y = vals[i,0,1]
-#         for j in range(1, num_layers):
-#             dx, dy = vals[i,j,0]-vals[i,j-1,0],vals[i,j,1]-vals[i,j-1,1]
-#             plt.arrow(start_x, start_y, dx, dy, length_includes_head=True, head_width=0.01, head_length=0.02)
-#             start_x, start_y = vals[i,j,0], vals[i,j,1]
-#         ax1 = plt.subplot(1,2,1)
-#         ax1.axis('off')
-#         I = Image.open(paths[i]).resize((300,300),Image.ANTIALIAS)
-#         plt.imshow(np.asarray(I).astype(np.int32))
-#         plt.savefig('{}{}/{}.jpg'.format(dst,'_'.join(plot_cpt), k))
+    concepts = args.concepts.split(',')
+    cpt_idx = [concepts.index(plot_cpt[0]),concepts.index(plot_cpt[1])]
+    vals = None 
+    layer_list = whitened_layers.split(',')
+    for i, layer in enumerate(layer_list):
+        if i == 0:
+            paths, vals = get_layer_representation(args, val_loader, layer, cpt_idx, time)
+        else:
+            _, val = get_layer_representation(args, val_loader, layer, cpt_idx, time)
+            vals = np.concatenate((vals,val),0)
+        #print(vals.shape)
+    try:
+        os.mkdir('{}{}'.format(dst,'_'.join(plot_cpt)))
+    except:
+        pass
 
-# '''
+    num_examples = vals.shape[1]
+    num_layers = vals.shape[0]
+    max_vals = np.amax(vals, axis=1)
+    min_vals = np.amin(vals, axis=1)
+    vals = vals.transpose((1,0,2))
+    # vals = (vals - min_vals)/(max_vals-min_vals)
+    sort_idx = vals.argsort(0)
+    for i in range(num_layers):
+        for j in range(2):
+            vals[sort_idx[:,i,j],i,j] = np.arange(num_examples)/num_examples
+    idx = np.arange(num_examples)
+    np.random.shuffle(idx)
+    for k, i in enumerate(idx):
+        if k==300:
+            break
+        fig = plt.figure(figsize=(10,5))
+        ax2 = plt.subplot(1,2,2)
+        ax2.set_xlim([0.0,1.0])
+        ax2.set_ylim([0.0,1.0])
+        ax2.set_xlabel(plot_cpt[0])
+        ax2.set_ylabel(plot_cpt[1])
+        plt.scatter(vals[i,:,0],vals[i,:,1])
+        start_x = vals[i,0,0]
+        start_y = vals[i,0,1]
+        for j in range(1, num_layers):
+            dx, dy = vals[i,j,0]-vals[i,j-1,0],vals[i,j,1]-vals[i,j-1,1]
+            plt.arrow(start_x, start_y, dx, dy, length_includes_head=True, head_width=0.01, head_length=0.02)
+            start_x, start_y = vals[i,j,0], vals[i,j,1]
+        ax1 = plt.subplot(1,2,1)
+        ax1.axis('off')
+        I = Image.open(paths[i][0]).resize((300,300),Image.ANTIALIAS)
+        plt.imshow(np.asarray(I).astype(np.int32))
+        plt.savefig('{}{}/{}.jpg'.format(dst,'_'.join(plot_cpt), k))
+
+'''
 #     For each layer and each concept, using activation value as the predicted probability of being a certain concept,
 #     auc score is computed with respect to label
 # '''
-# def plot_auc_cw(args, conceptdir, whitened_layers, plot_cpt = ['airplane','bed','person'], activation_mode = 'pool_max', dataset = 'places365'):
-#     # dst = './plot/' + args.arch + str(args.depth) + '/auc/cw/'
-#     dst = './plot/' + '_'.join(args.concepts.split(',')) + '/' + args.arch + str(args.depth) +'/auc/'
-#     if not os.path.exists(dst):
-#         os.mkdir(dst)
-#     dst += 'cw/'
-#     if not os.path.exists(dst):
-#         os.mkdir(dst)
-#     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-#                                  std=[0.229, 0.224, 0.225])
-#     concept_loader = torch.utils.data.DataLoader(
-#         ImageFolderWithPaths(conceptdir, transforms.Compose([
-#             transforms.Scale(256),
-#             transforms.CenterCrop(224),
-#             transforms.ToTensor(),
-#             normalize,
-#         ])),
-#         batch_size=args.batch_size, shuffle=True,
-#         num_workers=args.workers, pin_memory=False)
+def plot_auc_cw(args, time, conceptdir, whitened_layers, path_plots, 
+    plot_cpt, activation_mode = 'pool_max', dataset = 'places365'):
 
-#     layer_list = whitened_layers.split(',')
-#     concept_list = os.listdir(conceptdir)
-#     concept_list.sort()
-#     #print(concept_list)
-#     aucs = np.zeros((len(plot_cpt),len(layer_list)))
-#     aucs_err = np.zeros((len(plot_cpt),len(layer_list)))
-#     #print(aucs.shape)
-#     for c, cpt in enumerate(plot_cpt):
-#         #print(cpt)
-#         cpt_idx_2 = concept_list.index(cpt)
-#         cpt_idx = plot_cpt.index(cpt)
-#         #print(cpt_idx, cpt_idx_2)
-#         for i, layer in enumerate(layer_list):
-#             model = load_resnet_model(args, arch='resnet_cw', depth=18, whitened_layer=layer, dataset = dataset)
-#             with torch.no_grad():
-#                 model.eval()
-#                 model = model.module
-#                 layers = model.layers
-#                 model = model.model
-#                 outputs= []
+    dst = path_plots + 'auc/cw/'
+    if not os.path.exists(dst):
+        os.mkdir(dst)
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
+    concept_loader = torch.utils.data.DataLoader(
+        ImageFolderWithPaths(conceptdir, transforms.Compose([
+            transforms.Scale(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize,
+        ])),
+        batch_size=args.batch_size, shuffle=True,
+        num_workers=args.workers, pin_memory=False)
+
+    layer_list = whitened_layers.split(',')
+    concept_list = os.listdir(conceptdir)
+    concept_list.sort()
+    #print(concept_list)
+    aucs = np.zeros((len(plot_cpt),len(layer_list)))
+    aucs_err = np.zeros((len(plot_cpt),len(layer_list)))
+    #print(aucs.shape)
+    for c, cpt in enumerate(plot_cpt):
+        #print(cpt)
+        cpt_idx_2 = concept_list.index(cpt)
+        cpt_idx = plot_cpt.index(cpt)
+        #print(cpt_idx, cpt_idx_2)
+        for i, layer in enumerate(layer_list):
+            model = load_resnet_model(args, time, arch='resnet_cw', depth=18, whitened_layer=layer, dataset = dataset)
+            with torch.no_grad():
+                model.eval()
+                model = model.module
+                layers = model.layers
+                model = model.model
+                outputs= []
             
-#                 def hook(module, input, output):
-#                     from MODELS.iterative_normalization import iterative_normalization_py
-#                     #print(input)
-#                     X_hat = iterative_normalization_py.apply(input[0], module.running_mean, module.running_wm, module.num_channels, module.T,
-#                                                             module.eps, module.momentum, module.training)
-#                     size_X = X_hat.size()
-#                     size_R = module.running_rot.size()
-#                     X_hat = X_hat.view(size_X[0], size_R[0], size_R[2], *size_X[2:])
+                def hook(module, input, output):
+                    from MODELS.iterative_normalization import iterative_normalization_py
+                    #print(input)
+                    X_hat = iterative_normalization_py.apply(input[0], module.running_mean, module.running_wm, module.num_channels, module.T,
+                                                            module.eps, module.momentum, module.training)
+                    size_X = X_hat.size()
+                    size_R = module.running_rot.size()
+                    X_hat = X_hat.view(size_X[0], size_R[0], size_R[2], *size_X[2:])
 
-#                     X_hat = torch.einsum('bgchw,gdc->bgdhw', X_hat, module.running_rot)
-#                     #print(size_X)
-#                     X_hat = X_hat.view(*size_X)
+                    X_hat = torch.einsum('bgchw,gdc->bgdhw', X_hat, module.running_rot)
+                    #print(size_X)
+                    X_hat = X_hat.view(*size_X)
 
-#                     outputs.append(X_hat.cpu().numpy())
+                    outputs.append(X_hat.cpu().numpy())
                     
-#                 layer = int(layer)
-#                 if layer <= layers[0]:
-#                     model.layer1[layer-1].bn1.register_forward_hook(hook)
-#                 elif layer <= layers[0] + layers[1]:
-#                     model.layer2[layer-layers[0]-1].bn1.register_forward_hook(hook)
-#                 elif layer <= layers[0] + layers[1] + layers[2]:
-#                     model.layer3[layer-layers[0]-layers[1]-1].bn1.register_forward_hook(hook)
-#                 elif layer <= layers[0] + layers[1] + layers[2] + layers[3]:
-#                     model.layer4[layer-layers[0]-layers[1]-layers[2]-1].bn1.register_forward_hook(hook)
+                layer = int(layer)
+                if layer <= layers[0]:
+                    model.layer1[layer-1].bn1.register_forward_hook(hook)
+                elif layer <= layers[0] + layers[1]:
+                    model.layer2[layer-layers[0]-1].bn1.register_forward_hook(hook)
+                elif layer <= layers[0] + layers[1] + layers[2]:
+                    model.layer3[layer-layers[0]-layers[1]-1].bn1.register_forward_hook(hook)
+                elif layer <= layers[0] + layers[1] + layers[2] + layers[3]:
+                    model.layer4[layer-layers[0]-layers[1]-layers[2]-1].bn1.register_forward_hook(hook)
 
-#                 labels = []
-#                 vals = []
-#                 for j, (input, y, path) in enumerate(concept_loader):
-#                     #print(y, path)
-#                     labels += list(y.cpu().numpy())
-#                     input_var = torch.autograd.Variable(input).cuda()
-#                     outputs = []
-#                     model(input_var)
-#                     for output in outputs:
-#                         if activation_mode == 'mean':
-#                             vals += list(output.mean((2,3))[:, cpt_idx])
-#                         elif activation_mode == 'max':
-#                             vals += list(output.max((2,3))[:, cpt_idx])
-#                         elif activation_mode == 'pos_mean':
-#                             pos_bool = (output > 0).astype('int32')
-#                             act = (output * pos_bool).sum((2,3))/(pos_bool.sum((2,3))+0.0001)
-#                             vals += list(act[:, cpt_idx])
-#                         elif activation_mode=='pool_max':
-#                             kernel_size = 3
-#                             r = output.shape[3] % kernel_size
-#                             if r == 0:
-#                                 vals += list(skimage.measure.block_reduce(output[:,:,:,:],(1,1,kernel_size,kernel_size),np.max).mean((2,3))[:,cpt_idx])
-#                             else:
-#                                 vals += list(skimage.measure.block_reduce(output[:,:,:-r,:-r],(1,1,kernel_size,kernel_size),np.max).mean((2,3))[:,cpt_idx])
-#                         elif activation_mode == 'pool_max_s1':
-#                             X_test = torch.Tensor(output)
-#                             maxpool_value, maxpool_indices = nn.functional.max_pool2d(X_test, kernel_size=3, stride=1, return_indices=True)
-#                             X_test_unpool = nn.functional.max_unpool2d(maxpool_value,maxpool_indices, kernel_size=3, stride =1)
-#                             maxpool_bool = X_test == X_test_unpool
-#                             act = (X_test_unpool.sum((2,3)) / maxpool_bool.sum((2,3)).float()).numpy()
-#                             vals += list(act[:, cpt_idx])
-#                 del model
-#             vals = np.array(vals)
-#             labels = np.array(labels)
-#             labels = (labels == cpt_idx_2).astype('int32')
-#             n_samples = labels.shape[0]
-#             t = 5
-#             idx = np.array_split(np.random.permutation(n_samples),t)
-#             auc_t = []
-#             for j in range(t):
-#                 # idx = np.random.permutation(n_samples)[:n_samples//2]
-#                 # auc_t.append(roc_auc_score(labels[idx], vals[idx]))
-#                 auc_t.append(roc_auc_score(labels[idx[j]], vals[idx[j]]))
-#             aucs[c,i] = np.mean(auc_t)
-#             aucs_err[c,i] = np.std(auc_t)
-#             print(aucs[c,i])
-#             print(aucs_err[c,i])
+                labels = []
+                vals = []
+                for j, (input, y, path) in enumerate(concept_loader):
+                    #print(y, path)
+                    labels += list(y.cpu().numpy())
+                    input_var = torch.autograd.Variable(input).cuda()
+                    outputs = []
+                    model(input_var)
+                    for output in outputs:
+                        if activation_mode == 'mean':
+                            vals += list(output.mean((2,3))[:, cpt_idx])
+                        elif activation_mode == 'max':
+                            vals += list(output.max((2,3))[:, cpt_idx])
+                        elif activation_mode == 'pos_mean':
+                            pos_bool = (output > 0).astype('int32')
+                            act = (output * pos_bool).sum((2,3))/(pos_bool.sum((2,3))+0.0001)
+                            vals += list(act[:, cpt_idx])
+                        elif activation_mode=='pool_max':
+                            kernel_size = 3
+                            r = output.shape[3] % kernel_size
+                            if r == 0:
+                                vals += list(skimage.measure.block_reduce(output[:,:,:,:],(1,1,kernel_size,kernel_size),np.max).mean((2,3))[:,cpt_idx])
+                            else:
+                                vals += list(skimage.measure.block_reduce(output[:,:,:-r,:-r],(1,1,kernel_size,kernel_size),np.max).mean((2,3))[:,cpt_idx])
+                        elif activation_mode == 'pool_max_s1':
+                            X_test = torch.Tensor(output)
+                            maxpool_value, maxpool_indices = nn.functional.max_pool2d(X_test, kernel_size=3, stride=1, return_indices=True)
+                            X_test_unpool = nn.functional.max_unpool2d(maxpool_value,maxpool_indices, kernel_size=3, stride =1)
+                            maxpool_bool = X_test == X_test_unpool
+                            act = (X_test_unpool.sum((2,3)) / maxpool_bool.sum((2,3)).float()).numpy()
+                            vals += list(act[:, cpt_idx])
+                del model
+            vals = np.array(vals)
+            labels = np.array(labels)
+            labels = (labels == cpt_idx_2).astype('int32')
+            n_samples = labels.shape[0]
+            t = 5
+            idx = np.array_split(np.random.permutation(n_samples),t)
+            auc_t = []
+            for j in range(t):
+                # idx = np.random.permutation(n_samples)[:n_samples//2]
+                # auc_t.append(roc_auc_score(labels[idx], vals[idx]))
+                auc_t.append(roc_auc_score(labels[idx[j]], vals[idx[j]]))
+            aucs[c,i] = np.mean(auc_t)
+            aucs_err[c,i] = np.std(auc_t)
+            print(aucs[c,i])
+            print(aucs_err[c,i])
     
-#     print('AUC-CW', aucs)
-#     print('AUC-CW-err', aucs_err)
-#     np.save(dst + 'aucs_cw.npy', aucs)
-#     np.save(dst + 'aucs_cw_err.npy', aucs_err)
-#     return aucs
+    print('AUC-CW', aucs)
+    print('AUC-CW-err', aucs_err)
+    np.save(dst + 'aucs_cw.npy', aucs)
+    np.save(dst + 'aucs_cw_err.npy', aucs_err)
+    return aucs
 
 # '''
 #     Attempt to predict concept class using activation values. This is a measure of separability of concept representation in the latent space.
@@ -908,7 +909,7 @@ def plot_concept_top50(
 
 def plot_concept_representation(
         args, val_loader, model, whitened_layers, path_plots,
-        plot_cpt=['airplane', 'bed'], activation_mode='mean'):
+        plot_cpt, activation_mode='mean'):
     with torch.no_grad():
         dst = path_plots + '/representation/'
         if not os.path.exists(dst):
@@ -956,8 +957,9 @@ def plot_concept_representation(
 
         paths = []
         vals = None
-        for i, (input, _, path) in enumerate(val_loader):
-            paths += list(path)
+        for i, (input, label) in enumerate(val_loader):
+            path = val_loader.dataset.samples[i]
+            paths.append(path)
             input_var = torch.autograd.Variable(input).cuda()
             outputs = []
             model(input_var)
@@ -1007,7 +1009,7 @@ def plot_concept_representation(
                 for j in range(n_grid):
                     index = idx_merge[i,j].astype(np.int32)
                     if index >= 0:
-                        path = paths[index]
+                        path = paths[index][0]
                         I = Image.open(path).resize((img_size,img_size),Image.ANTIALIAS).convert("RGB")
                         img_merge[i*img_size:(i+1)*img_size, j*img_size:(j+1)*img_size,:] = np.asarray(I)
             plt.figure()
@@ -1054,7 +1056,7 @@ def plot_correlation(args, val_loader, model, layer, path_plots):
         elif layer <= layers[0] + layers[1] + layers[2] + layers[3]:
             model.layer4[layer-layers[0]-layers[1]-layers[2]-1].bn1.register_forward_hook(hook)
 
-        for i, (input, _, path) in enumerate(val_loader):
+        for i, (input, label) in enumerate(val_loader):
             input_var = torch.autograd.Variable(input).cuda()
             model(input_var)
             if i==50:
@@ -1073,9 +1075,9 @@ def plot_correlation(args, val_loader, model, layer, path_plots):
         plt.savefig(dst + str(layer) + '.jpg')
 
 
-def concept_permutation_importance(args, val_loader, layer, criterion, arch='resnet_cw', dataset='isic', num_concepts=7):
+def concept_permutation_importance(args, time, val_loader, layer, criterion, arch='resnet_cw', dataset='isic', num_concepts=7):
     # will compute the concept importance of the top {num_concepts} concepts in the given layer
-    model = load_resnet_model(args, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
+    model = load_resnet_model(args, time, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
     #print(model)
 
     base_loss = 0
@@ -1151,8 +1153,8 @@ def concept_permutation_importance(args, val_loader, layer, criterion, arch='res
     print(base_accuracy)
 
 
-def concept_gradient_importance(args, val_loader, layer, criterion, arch='resnet_cw', dataset='isic', num_classes=2):
-    model = load_resnet_model(args, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
+def concept_gradient_importance(args, time, val_loader, layer, criterion, arch='resnet_cw', dataset='isic', num_classes=2):
+    model = load_resnet_model(args, time, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
     #print(model)
     # model.eval()
     model = model.module
@@ -1202,14 +1204,14 @@ def concept_gradient_importance(args, val_loader, layer, criterion, arch='resnet
         print(concept_importance_per_class[i].mean())
 
 
-def saliency_map_class(args, val_loader, layer, arch='resnet_cw', dataset='isic'):
+def saliency_map_class(args, time, val_loader, layer, arch='resnet_cw', dataset='isic'):
     dst = './plot/' + '_'.join(args.concepts.split(',')) + '/' + args.arch + str(args.depth) + '/saliency_map/'
     # dst = '/usr/xtmp/zhichen/temp_plots/'
     try:
         os.mkdir(dst)
     except:
         pass
-    model = load_resnet_model(args, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
+    model = load_resnet_model(args, time, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
     #print(model)
     # model.eval()
     model = model.module
@@ -1241,14 +1243,14 @@ def saliency_map_class(args, val_loader, layer, arch='resnet_cw', dataset='isic'
         plt.savefig(os.path.join(save_folder, str(i)+'.png'))
         plt.close()
 
-def saliency_map_concept(args, val_loader, layer, arch='resnet_cw', dataset='isic', num_concepts=7):
+def saliency_map_concept(args, time, val_loader, layer, arch='resnet_cw', dataset='isic', num_concepts=7):
     dst = './plot/' + '_'.join(args.concepts.split(',')) + '/' + args.arch + str(args.depth) + '/saliency_map_concept/'
     # dst = '/usr/xtmp/zhichen/temp_plots/'
     try:
         os.mkdir(dst)
     except:
         pass
-    model = load_resnet_model(args, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
+    model = load_resnet_model(args, time, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
     #print(model)
     # model.eval()
     model = model.module
@@ -1298,15 +1300,14 @@ def saliency_map_concept(args, val_loader, layer, arch='resnet_cw', dataset='isi
             plt.close()
             outputs = []
 
-def saliency_map_concept_cover(args, val_loader, layer, arch='resnet_cw', dataset='isic', num_concepts=7, time=""):
+def saliency_map_concept_cover(args, time, val_loader, layer, arch='resnet_cw', dataset='isic', num_concepts=7):
     # dst = './plot/' + '_'.join(args.concepts.split(',')) + '/' + args.arch + str(args.depth) + '/saliency_map_concept_cover_fine_grain_2/'
-    # dst = '/usr/xtmp/zhichen/temp_plots_layer1_3/'
-    dst = "/share/taglab/Fang/concept-coloring-preliminary/plots/{}".format(time)
+    dst = '/usr/xtmp/zhichen/temp_plots_layer1_3/'
     try:
         os.mkdir(dst)
     except:
         pass
-    model = load_resnet_model(args, arch=arch, depth=18, whitened_layer=layer, dataset=dataset, time)
+    model = load_resnet_model(args, time, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
     #print(model)
     model.eval()
     model = model.module
@@ -1395,14 +1396,14 @@ def saliency_map_concept_cover(args, val_loader, layer, arch='resnet_cw', datase
                 image.save(os.path.join(save_folder, str(i)+'.png'), 'PNG')
                 print("saved: " + str(j))
 
-def saliency_map_concept_cover_2(args, val_loader, layer, arch='resnet_cw', dataset='isic', num_concepts=7):
+def saliency_map_concept_cover_2(args, time, val_loader, layer, arch='resnet_cw', dataset='isic', num_concepts=7):
     # dst = './plot/' + '_'.join(args.concepts.split(',')) + '/' + args.arch + str(args.depth) + '/saliency_map_concept_cover_fine_grain_2/'
     dst = '/usr/xtmp/zhichen/temp_plots_isic_3/'
     try:
         os.mkdir(dst)
     except:
         pass
-    model = load_resnet_model(args, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
+    model = load_resnet_model(args, time, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
     #print(model)
     model.eval()
     model = model.module
@@ -1492,13 +1493,13 @@ def saliency_map_concept_cover_2(args, val_loader, layer, arch='resnet_cw', data
                 print("saved: " + str(j))
 
 
-def load_resnet_model(args, arch = 'resnet_original', depth=18, checkpoint_folder="./checkpoints", whitened_layer=None, dataset = 'places365', time=""):
+def load_resnet_model(args, time, arch='resnet_original', depth=18, checkpoint_folder="./checkpoints", whitened_layer=7, dataset='places365'):
     if dataset == 'places365':
         n_classes = 365
     elif dataset == 'isic':
         n_classes = 2
     prefix_name = args.prefix[:args.prefix.rfind('_')]
-    
+
     model = None
     if arch == 'resnet_original':
         if depth == 50:
@@ -1507,21 +1508,27 @@ def load_resnet_model(args, arch = 'resnet_original', depth=18, checkpoint_folde
             model = ResidualNetBN(n_classes, args, arch = 'resnet18', layers = [2, 2, 2, 2], model_file=os.path.join(checkpoint_folder, 'resnet18_{}.pth.tar'.format(dataset)))
         model = torch.nn.DataParallel(model, device_ids=list(range(args.ngpu)))
         model = model.cuda()
+
     elif arch == 'resnet_cw':
         concept_names = '_'.join(args.concepts.split(','))
-        if whitened_layer == None:
+        if whitened_layer is None:
             raise Exception("whitened_layer argument is required")
         else:
             if depth == 50:
                 model = ResidualNetTransfer(n_classes, args, [int(whitened_layer)], arch = 'resnet50', layers = [3, 4, 6, 3], model_file=os.path.join(checkpoint_folder, 'resnet50_{}.pth.tar'.format(dataset)))
                 checkpoint_name = '{}_{}_model_best.pth.tar'.format(prefix_name, whitened_layer)
+
             elif depth == 18:
-                model = ResidualNetTransfer(n_classes, args, [int(whitened_layer)], arch = 'resnet18', layers = [2, 2, 2, 2], model_file=os.path.join(checkpoint_folder, 'resnet18_{}.pth.tar'.format(dataset)))
-                # model = ResidualNetTransfer(n_classes, args, [int(whitened_layer)], arch = 'resnet18', layers = [2, 2, 2, 2], model_file=None)
+                model = ResidualNetTransfer(
+                    n_classes, args, [int(whitened_layer)], arch='resnet18',
+                    layers=[2, 2, 2, 2],
+                    model_file=os.path.join(
+                        checkpoint_folder,
+                        'resnet18_{}.pth.tar'.format(dataset)))
                 checkpoint_name = '{}_{}_checkpoint.pth.tar'.format(prefix_name, whitened_layer)
         model = torch.nn.DataParallel(model, device_ids=list(range(args.ngpu)))
         model = model.cuda()
-        checkpoint_path = os.path.join(checkpoint_folder, concept_names + "_{}".format(time), checkpoint_name)
+        checkpoint_path = os.path.join(checkpoint_folder, concept_names + "_" + time, checkpoint_name)
         if os.path.isfile(checkpoint_path):
             print("=> loading checkpoint '{}'".format(checkpoint_path))
             checkpoint = torch.load(checkpoint_path)
