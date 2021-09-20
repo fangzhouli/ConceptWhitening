@@ -176,10 +176,10 @@ def plot_concept_top50(
 
                 for j in range(5):
                     src = arr[j][1]
-                    copyfile(
-                        src,
-                        output_path + '/' + 'layer' + layer + '_'
-                        + str(j + 1) + '.jpg')
+                    output_fn = output_path + '/' + 'layer' + layer + '_' \
+                        + str(j + 1) + '.jpg'
+                    print(output_fn)
+                    copyfile(src, output_fn)
     return 0
 
 
