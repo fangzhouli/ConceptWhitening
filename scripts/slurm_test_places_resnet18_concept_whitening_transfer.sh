@@ -21,7 +21,7 @@
 python ../train_places.py /share/taglab/Fang/cw/data_256/ \
     --seed 1232 \
     --ngpu 1 \
-    --workers 0 \
+    --workers 32 \
     --arch resnet_cw \
     --depth 18 \
     --epochs 200 \

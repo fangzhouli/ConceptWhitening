@@ -8,6 +8,8 @@ import random
 import numpy as np
 
 import torch
+torch.multiprocessing.set_sharing_strategy('file_system')
+
 import torch.nn as nn
 import torch.nn.parallel
 import torch.nn.functional as F
