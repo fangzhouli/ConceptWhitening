@@ -62,6 +62,9 @@ parser.add_argument("--seed", type=int, default=1234, metavar='BS',
                     help='input batch size for training (default: 64)')
 parser.add_argument("--prefix", type=str, required=True,
                     metavar='PFX', help='prefix for logging & checkpoint saving')
+
+parser.add_argument("--checkpoint-timestamp", type=str)
+
 parser.add_argument('--evaluate', dest='evaluate',
                     action='store_true', help='evaluation only')
 best_prec1 = 0
@@ -270,23 +273,38 @@ def main():
         # plot_figures(args, model, test_loader_with_path, train_loader, concept_loaders, conceptdir_test)
         # saliency_map_concept_cover(args, val_loader_2, '1', arch='resnet_cw', dataset='places365', num_concepts=7)
 
+        # print("Start Ploting")
+        # times = ['20210903_073210',
+        #          '20210904_115816',
+        #          '20210904_205429',
+        #          '20210905_131108']
+        # for time in times:
+        #     print("Loading model {}_{}".format(
+        #         '_'.join(args.concepts.split(',')),
+        #         time))
+
+        #     model = load_resnet_model(
+        #         args, arch=args.arch, depth=args.depth, whitened_layer='7',
+        #         time=time)
+
+        #     plot_figures(
+        #         args, model, val_loader, train_loader, concept_loaders,
+        #         conceptdir_test, time)
+
         print("Start Ploting")
-        times = ['20210903_073210',
-                 '20210904_115816',
-                 '20210904_205429',
-                 '20210905_131108']
-        for time in times:
-            print("Loading model {}_{}".format(
-                '_'.join(args.concepts.split(',')),
-                time))
+        print("Loading model {}_{}".format(
+            '_'.join(args.concepts.split(',')),
+            args.checkpoint_timestamp))
 
-            model = load_resnet_model(
-                args, arch=args.arch, depth=args.depth, whitened_layer='7',
-                time=time)
+        model = load_resnet_model(
+            args, arch=args.arch, depth=args.depth, whitened_layer='7',
+            time=args.checkpoint_timestamp)
 
-            plot_figures(
-                args, model, val_loader, train_loader, concept_loaders,
-                conceptdir_test, time)
+        plot_figures(
+            args, model, val_loader, train_loader, concept_loaders,
+            conceptdir_test, args.checkpoint_timestamp)
+
+
         # saliency_map_concept_cover(
         #     args, val_loader, '7', arch='resnet_cw', dataset='places365',
         #     num_concepts=9)
