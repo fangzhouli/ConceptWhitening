@@ -129,6 +129,7 @@ def plot_concept_top50(
                 os.mkdir(output_path)
             paths = []
             vals = None
+            # for i, (input, _, path) in enumerate(val_loader):
             for i, (input, path) in enumerate(val_loader):
                 paths += list(path)
                 input_var = torch.autograd.Variable(input).cuda()
@@ -956,7 +957,8 @@ def plot_concept_representation(
 
         paths = []
         vals = None
-        for i, (input, _, path) in enumerate(val_loader):
+        # for i, (input, _, path) in enumerate(val_loader):
+        for i, (input, path) in enumerate(val_loader):
             paths += list(path)
             input_var = torch.autograd.Variable(input).cuda()
             outputs = []
@@ -1054,7 +1056,8 @@ def plot_correlation(args, val_loader, model, layer, path_plots):
         elif layer <= layers[0] + layers[1] + layers[2] + layers[3]:
             model.layer4[layer-layers[0]-layers[1]-layers[2]-1].bn1.register_forward_hook(hook)
 
-        for i, (input, _, path) in enumerate(val_loader):
+        # for i, (input, _, path) in enumerate(val_loader):
+        for i, (input, path) in enumerate(val_loader):
             input_var = torch.autograd.Variable(input).cuda()
             model(input_var)
             if i==50:
