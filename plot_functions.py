@@ -128,9 +128,6 @@ def plot_concept_top50(
                 os.mkdir(output_path)
             paths = []
             vals = None
-            #print(val_loader)
-            #TMP = iter(val_loader)
-            #print(next(TMP))
             for i, (input, label) in enumerate(val_loader):
                 path, _ = val_loader.dataset.samples[i]
                 paths.append(path)
