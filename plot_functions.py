@@ -132,7 +132,7 @@ def plot_concept_top50(
             # for i, (input, _, path) in enumerate(val_loader):
             for i, (input, path) in enumerate(val_loader):
                 path, _ = val_loader.dataset.samples[i]
-                paths += path
+                paths.append(path)
                 input_var = torch.autograd.Variable(input).cuda()
                 outputs = []
                 model(input_var)
@@ -178,7 +178,6 @@ def plot_concept_top50(
                 for j in range(5):
                     print(arr)
                     print(arr[j])
-                    print(arr[j][1].numpy())
                     src = arr[j][1]
                     output_fn = output_path + '/' + 'layer' + layer + '_' \
                         + str(j + 1) + '.jpg'
