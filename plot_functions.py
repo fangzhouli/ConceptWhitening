@@ -189,6 +189,7 @@ def plot_concept_top50(
 
             for i, layer in enumerate(layer_list):
                 arr = list(zip(list(vals[i, :]), list(paths)))
+                print(arr)
                 arr.sort(key=lambda t: t[0], reverse=True)
                 # arr.sort(key = lambda t: t[0], reverse = False)
                 # with open('76dim.txt', 'w') as f:
