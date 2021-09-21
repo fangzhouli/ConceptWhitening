@@ -480,10 +480,10 @@ def plot_figures(
     if not os.path.exists(path_plots):
         os.mkdir(path_plots)
 
-    print("Plot top50 activated images")
-    plot_concept_top50(
-        args, data_loader, model, '7', path_plots,
-        activation_mode=args.act_mode)
+    # print("Plot top50 activated images")
+    # plot_concept_top50(
+    #     args, data_loader, model, '7', path_plots,
+    #     activation_mode=args.act_mode)
 
     print("Plot 2d slice of representation within the same topic")
     plot_concept_representation(

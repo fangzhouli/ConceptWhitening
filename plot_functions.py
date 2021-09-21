@@ -944,15 +944,18 @@ def plot_concept_representation(
         for layer in layer_list:
             layer = int(layer)
             if layer <= layers[0]:
-                model.layer1[layer-1].bn1.register_forward_hook(hook)
+                model.layer1[layer - 1].bn1.register_forward_hook(hook)
             elif layer <= layers[0] + layers[1]:
-                model.layer2[layer-layers[0]-1].bn1.register_forward_hook(hook)
+                model.layer2[layer - layers[0] - 1]\
+                    .bn1.register_forward_hook(hook)
             elif layer <= layers[0] + layers[1] + layers[2]:
-                model.layer3[layer-layers[0]-layers[1]-1].bn1.register_forward_hook(hook)
+                model.layer3[layer - layers[0] - layers[1] - 1]\
+                    .bn1.register_forward_hook(hook)
             elif layer <= layers[0] + layers[1] + layers[2] + layers[3]:
-                model.layer4[layer-layers[0]-layers[1]-layers[2]-1].bn1.register_forward_hook(hook)
+                model.layer4[layer - layers[0] - layers[1] - layers[2] - 1]\
+                    .bn1.register_forward_hook(hook)
         concepts = args.concepts.split(',')
-        cpt_idx = [concepts.index(plot_cpt[0]),concepts.index(plot_cpt[1])]
+        cpt_idx = [concepts.index(plot_cpt[0]), concepts.index(plot_cpt[1])]
 
         paths = []
         vals = None
@@ -965,59 +968,84 @@ def plot_concept_representation(
             val = []
             for output in outputs:
                 if activation_mode == 'mean':
-                    val.append(output.mean((2,3))[:,cpt_idx])
+                    val.append(output.mean((2, 3))[:, cpt_idx])
                 elif activation_mode == 'max':
-                    val.append(output.max((2,3))[:,cpt_idx])
+                    val.append(output.max((2, 3))[:, cpt_idx])
                 elif activation_mode == 'pos_mean':
                     pos_bool = (output > 0).astype('int32')
-                    act = (output * pos_bool).sum((2,3))/(pos_bool.sum((2,3))+0.0001)
-                    val.append(act[:,cpt_idx])
-                elif activation_mode=='pool_max':
+                    act = (output * pos_bool).sum((2, 3)) \
+                        / (pos_bool.sum((2, 3)) + 0.0001)
+                    val.append(act[:, cpt_idx])
+                elif activation_mode == 'pool_max':
                     kernel_size = 3
                     r = output.shape[3] % kernel_size
                     if r == 0:
-                        val.append(skimage.measure.block_reduce(output[:,:,:,:],(1,1,kernel_size,kernel_size),np.max).mean((2,3))[:,cpt_idx])
+                        val.append(
+                            skimage.measure.block_reduce(
+                                output[:, :, :, :],
+                                (1, 1, kernel_size, kernel_size),
+                                np.max).mean((2, 3))[:, cpt_idx])
                     else:
-                        val.append(skimage.measure.block_reduce(output[:,:,:-r,:-r],(1,1,kernel_size,kernel_size),np.max).mean((2,3))[:,cpt_idx])
+                        val.append(
+                            skimage.measure.block_reduce(
+                                output[:, :, :-r, :-r],
+                                (1, 1, kernel_size, kernel_size),
+                                np.max).mean((2, 3))[:, cpt_idx])
                 elif activation_mode == 'pool_max_s1':
                     X_test = torch.Tensor(output)
-                    maxpool_value, maxpool_indices = nn.functional.max_pool2d(X_test, kernel_size=3, stride=1, return_indices=True)
-                    X_test_unpool = nn.functional.max_unpool2d(maxpool_value,maxpool_indices, kernel_size=3, stride =1)
+                    maxpool_value, maxpool_indices = nn.functional.max_pool2d(
+                        X_test, kernel_size=3, stride=1, return_indices=True)
+                    X_test_unpool = nn.functional.max_unpool2d(
+                        maxpool_value,
+                        maxpool_indices,
+                        kernel_size=3,
+                        stride=1)
                     maxpool_bool = X_test == X_test_unpool
-                    act = (X_test_unpool.sum((2,3)) / maxpool_bool.sum((2,3)).float()).numpy()
-                    val.append(act[:,cpt_idx])
+                    act = (X_test_unpool.sum((2, 3))
+                           / maxpool_bool.sum((2, 3)).float()).numpy()
+                    val.append(act[:, cpt_idx])
             val = np.array(val)
             if i == 0:
                 vals = val
             else:
-                vals = np.concatenate((vals,val),1)
+                vals = np.concatenate((vals, val), 1)
 
-        for l, layer in enumerate(layer_list):
+        for il, layer in enumerate(layer_list):
             n_grid = 20
             img_size = 100
-            img_merge = np.zeros((img_size*n_grid,img_size*n_grid,3))
-            idx_merge = -np.ones((n_grid+1,n_grid+1))
-            cnt = np.zeros((n_grid+1,n_grid+1))
-            arr = vals[l,:]
+            img_merge = np.zeros((img_size * n_grid, img_size * n_grid, 3))
+            idx_merge = -np.ones((n_grid + 1, n_grid + 1))
+            cnt = np.zeros((n_grid + 1, n_grid + 1))
+            arr = vals[il, :]
             for j in range(len(paths)):
-                index = np.floor((arr[j,:]-arr.min(0))/(arr.max(0)-arr.min(0))*n_grid).astype(np.int32)
-                idx_merge[index[0],index[1]] = j
-                cnt[index[0],index[1]] += 1
+                index = np.floor(
+                    (arr[j, :] - arr.min(0))
+                    / (arr.max(0) - arr.min(0))
+                    * n_grid).astype(np.int32)
+                idx_merge[index[0], index[1]] = j
+                cnt[index[0], index[1]] += 1
 
             for i in range(n_grid):
                 for j in range(n_grid):
-                    index = idx_merge[i,j].astype(np.int32)
+                    index = idx_merge[i, j].astype(np.int32)
                     if index >= 0:
+                        print(paths[index])
                         path = paths[index]
-                        I = Image.open(path).resize((img_size,img_size),Image.ANTIALIAS).convert("RGB")
-                        img_merge[i*img_size:(i+1)*img_size, j*img_size:(j+1)*img_size,:] = np.asarray(I)
+                        img = Image.open(path).resize(
+                            (img_size, img_size),
+                            Image.ANTIALIAS).convert("RGB")
+                        img_merge[i * img_size:(i + 1) * img_size,
+                                  j * img_size:(j + 1) * img_size,
+                                  :] = np.asarray(img)
             plt.figure()
             plt.imshow(img_merge.astype(np.int32))
             plt.xlabel(plot_cpt[1])
             plt.ylabel(plot_cpt[0])
-            plt.savefig(dst+'layer'+layer+'_'+'_'.join(plot_cpt)+'.jpg',dpi=img_size*n_grid//4)
+            plt.savefig(
+                dst + 'layer' + layer + '_' + '_'.join(plot_cpt) + '.jpg',
+                dpi=img_size * n_grid // 4)
             plt.figure()
-            ax = sns.heatmap(cnt/cnt.sum(), linewidth=0.5)
+            sns.heatmap(cnt / cnt.sum(), linewidth=0.5)
             plt.xlabel(plot_cpt[1])
             plt.ylabel(plot_cpt[0])
 
