@@ -129,8 +129,7 @@ def plot_concept_top50(
                 os.mkdir(output_path)
             paths = []
             vals = None
-            # for i, (input, _, path) in enumerate(val_loader):
-            for i, (input, path) in enumerate(val_loader):
+            for i, (input, target) in enumerate(val_loader):
                 path, _ = val_loader.dataset.samples[i]
                 paths.append(path)
                 input_var = torch.autograd.Variable(input).cuda()
@@ -175,7 +174,7 @@ def plot_concept_top50(
                 #     for item in arr:
                 #         f.write(item[1]+'\n')
 
-                for j in range(5):
+                for j in range(50):
                     src = arr[j][1]
                     output_fn = output_path + '/' + 'layer' + layer + '_' \
                         + str(j + 1) + '.jpg'
@@ -957,9 +956,9 @@ def plot_concept_representation(
 
         paths = []
         vals = None
-        # for i, (input, _, path) in enumerate(val_loader):
-        for i, (input, path) in enumerate(val_loader):
-            paths += list(path)
+        for i, (input, target) in enumerate(val_loader):
+            path = val_loader.dataset.samples[i]
+            paths.append(path)
             input_var = torch.autograd.Variable(input).cuda()
             outputs = []
             model(input_var)
@@ -1056,8 +1055,7 @@ def plot_correlation(args, val_loader, model, layer, path_plots):
         elif layer <= layers[0] + layers[1] + layers[2] + layers[3]:
             model.layer4[layer-layers[0]-layers[1]-layers[2]-1].bn1.register_forward_hook(hook)
 
-        # for i, (input, _, path) in enumerate(val_loader):
-        for i, (input, path) in enumerate(val_loader):
+        for i, (input, target) in enumerate(val_loader):
             input_var = torch.autograd.Variable(input).cuda()
             model(input_var)
             if i==50:
@@ -1076,14 +1074,19 @@ def plot_correlation(args, val_loader, model, layer, path_plots):
         plt.savefig(dst + str(layer) + '.jpg')
 
 
-def concept_permutation_importance(args, val_loader, layer, criterion, arch='resnet_cw', dataset='isic', num_concepts=7):
-    # will compute the concept importance of the top {num_concepts} concepts in the given layer
-    model = load_resnet_model(args, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
-    #print(model)
+def concept_permutation_importance(
+        args, val_loader, layer, criterion, arch='resnet_cw', dataset='isic',
+        num_concepts=7):
+    # will compute the concept importance of the top {num_concepts} concepts in
+    #   the given layer
+    model = load_resnet_model(
+        args, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
 
     base_loss = 0
     base_accuracy = 0
-    permutation_loss = [] # permutation_loss[i] represents the loss obtained when concept i is shuffled
+    # permutation_loss[i] represents the loss obtained when concept i is
+    #   shuffled
+    permutation_loss = []
     permutation_accuracy = []
 
     with torch.no_grad():
@@ -1105,7 +1108,7 @@ def concept_permutation_importance(args, val_loader, layer, criterion, arch='res
 
             [accuracy_batch] = accuracy(output.data, target_var, topk=(1,))
             accuracy_avg.update(accuracy_batch, input.size(0))
-        
+
         base_loss = loss_avg.avg
         print('base loss', base_loss)
         base_accuracy = accuracy_avg.avg
@@ -1119,18 +1122,22 @@ def concept_permutation_importance(args, val_loader, layer, criterion, arch='res
                 idx = list(range(batch_size))
                 random.shuffle(idx)
                 new_output = output.clone()
-                new_output[:,axis_to_permute,:,:] = new_output[idx,axis_to_permute,:,:]
+                new_output[:, axis_to_permute, :, :] \
+                    = new_output[idx, axis_to_permute, :, :]
                 return new_output
-                
+
             layer = int(layer)
             if layer <= layers[0]:
-                model.layer1[layer-1].bn1.register_forward_hook(hook)
+                model.layer1[layer - 1].bn1.register_forward_hook(hook)
             elif layer <= layers[0] + layers[1]:
-                model.layer2[layer-layers[0]-1].bn1.register_forward_hook(hook)
+                model.layer2[layer - layers[0] - 1]\
+                    .bn1.register_forward_hook(hook)
             elif layer <= layers[0] + layers[1] + layers[2]:
-                model.layer3[layer-layers[0]-layers[1]-1].bn1.register_forward_hook(hook)
+                model.layer3[layer - layers[0] - layers[1] - 1]\
+                    .bn1.register_forward_hook(hook)
             elif layer <= layers[0] + layers[1] + layers[2] + layers[3]:
-                model.layer4[layer-layers[0]-layers[1]-layers[2]-1].bn1.register_forward_hook(hook)
+                model.layer4[layer - layers[0] - layers[1] - layers[2] - 1]\
+                    .bn1.register_forward_hook(hook)
 
             for i, (input, target) in enumerate(val_loader):
                 input_var = torch.autograd.Variable(input).cuda()
@@ -1141,11 +1148,11 @@ def concept_permutation_importance(args, val_loader, layer, criterion, arch='res
                 loss_avg.update(loss.data, input.size(0))
                 [accuracy_batch] = accuracy(output.data, target_var, topk=(1,))
                 accuracy_avg.update(accuracy_batch, input.size(0))
-            
+
             print(axis_to_permute, loss_avg.avg)
             permutation_loss.append(loss_avg.avg)
             permutation_accuracy.append(accuracy_avg.avg)
-        
+
     print('max_i', np.argmax(permutation_loss), np.max(permutation_loss))
     print('min_i', np.argmin(permutation_loss), np.min(permutation_loss))
     print(permutation_loss)
@@ -1154,21 +1161,22 @@ def concept_permutation_importance(args, val_loader, layer, criterion, arch='res
     print(base_accuracy)
 
 
-def concept_gradient_importance(args, val_loader, layer, criterion, arch='resnet_cw', dataset='isic', num_classes=2):
-    model = load_resnet_model(args, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
-    #print(model)
-    # model.eval()
+def concept_gradient_importance(
+        args, val_loader, layer, criterion, arch='resnet_cw', dataset='isic',
+        num_classes=2):
+    model = load_resnet_model(
+        args, arch=arch, depth=18, whitened_layer=layer, dataset=dataset)
     model = model.module
     layers = model.layers
     if args.arch == "resnet_cw":
         model = model.model
-    
+
     print(model)
     outputs = []
 
     def hook(module, grad_input, grad_output):
         outputs.append(grad_input[0])
-    
+
     layer = int(layer)
     if layer <= layers[0]:
         model.layer1[layer-1].relu.register_backward_hook(hook)
