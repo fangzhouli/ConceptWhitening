@@ -474,6 +474,7 @@ def plot_figures(
         conceptdir, time):
     concept_name = args.concepts.split(',')
 
+    print(os.getcwd())
     path_plots = './plots/' + '_'.join(concept_name) + "_{}/".format(time)
 
     if not os.path.exists(path_plots):
