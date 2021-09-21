@@ -1030,7 +1030,7 @@ def plot_concept_representation(
                     index = idx_merge[i, j].astype(np.int32)
                     if index >= 0:
                         print(paths[index])
-                        path = paths[index]
+                        path = paths[index][0]
                         img = Image.open(path).resize(
                             (img_size, img_size),
                             Image.ANTIALIAS).convert("RGB")
