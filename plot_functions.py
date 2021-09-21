@@ -131,7 +131,8 @@ def plot_concept_top50(
             vals = None
             # for i, (input, _, path) in enumerate(val_loader):
             for i, (input, path) in enumerate(val_loader):
-                paths += list(path)
+                path, _ = val_loader.dataset.samples[i]
+                paths += path
                 input_var = torch.autograd.Variable(input).cuda()
                 outputs = []
                 model(input_var)
@@ -167,8 +168,8 @@ def plot_concept_top50(
                     vals = np.concatenate((vals,val),1)
 
             for i, layer in enumerate(layer_list):
-                arr = list(zip(list(vals[i,:]),list(paths)))
-                arr.sort(key = lambda t: t[0], reverse = True)
+                arr = list(zip(list(vals[i, :]), list(paths)))
+                arr.sort(key=lambda t: t[0], reverse=True)
                 # arr.sort(key = lambda t: t[0], reverse = False)
                 # with open('76dim.txt', 'w') as f:
                 #     for item in arr:
