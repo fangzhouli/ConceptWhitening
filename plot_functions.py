@@ -138,33 +138,54 @@ def plot_concept_top50(
                 val = []
                 for output in outputs:
                     if activation_mode == 'mean':
-                        val = np.concatenate((val,output.mean((2,3))[:,k]))
+                        val = np.concatenate((val, output.mean((2, 3))[:, k]))
                     elif activation_mode == 'max':
-                        val = np.concatenate((val,output.max((2,3))[:,k]))
+                        val = np.concatenate((val, output.max((2, 3))[:, k]))
                     elif activation_mode == 'pos_mean':
                         pos_bool = (output > 0).astype('int32')
-                        act = (output * pos_bool).sum((2,3))/(pos_bool.sum((2,3))+0.0001)
-                        val = np.concatenate((val,act[:,k]))
+                        act = (output * pos_bool).sum((2, 3)) \
+                            / (pos_bool.sum((2, 3)) + 0.0001)
+                        val = np.concatenate((val, act[:, k]))
                     elif activation_mode == 'pool_max':
                         kernel_size = 3
                         r = output.shape[3] % kernel_size
                         if r == 0:
-                            val = np.concatenate((val,skimage.measure.block_reduce(output[:,:,:,:],(1,1,kernel_size,kernel_size),np.max).mean((2,3))[:,k]))
+                            val = np.concatenate((
+                                val,
+                                skimage.measure.block_reduce(
+                                    output[:, :, :, :],
+                                    (1, 1, kernel_size, kernel_size),
+                                    np.max).mean((2, 3))[:, k]))
                         else:
-                            val = np.concatenate((val,skimage.measure.block_reduce(output[:,:,:-r,:-r],(1,1,kernel_size,kernel_size),np.max).mean((2,3))[:,k]))
+                            val = np.concatenate((
+                                val,
+                                skimage.measure.block_reduce(
+                                    output[:, :, :-r, :-r],
+                                    (1, 1, kernel_size, kernel_size),
+                                    np.max).mean((2, 3))[:, k]))
                     elif activation_mode == 'pool_max_s1':
                         X_test = torch.Tensor(output)
-                        maxpool_value, maxpool_indices = nn.functional.max_pool2d(X_test, kernel_size=3, stride=1, return_indices=True)
-                        X_test_unpool = nn.functional.max_unpool2d(maxpool_value,maxpool_indices, kernel_size=3, stride =1)
+                        maxpool_value, maxpool_indices \
+                            = nn.functional.max_pool2d(
+                                X_test,
+                                kernel_size=3,
+                                stride=1,
+                                return_indices=True)
+                        X_test_unpool = nn.functional.max_unpool2d(
+                            maxpool_value,
+                            maxpool_indices,
+                            kernel_size=3,
+                            stride=1)
                         maxpool_bool = X_test == X_test_unpool
-                        act = (X_test_unpool.sum((2,3)) / maxpool_bool.sum((2,3)).float()).numpy()
-                        val = np.concatenate((val,act[:,k]))
+                        act = (X_test_unpool.sum((2, 3))
+                               / maxpool_bool.sum((2, 3)).float()).numpy()
+                        val = np.concatenate((val, act[:, k]))
 
-                val = val.reshape((len(outputs),-1))
+                val = val.reshape((len(outputs), -1))
                 if i == 0:
                     vals = val
                 else:
-                    vals = np.concatenate((vals,val),1)
+                    vals = np.concatenate((vals, val), 1)
 
             for i, layer in enumerate(layer_list):
                 arr = list(zip(list(vals[i, :]), list(paths)))
