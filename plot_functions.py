@@ -130,7 +130,8 @@ def plot_concept_top50(
             paths = []
             vals = None
             for i, (input, target) in enumerate(val_loader):
-                path, _ = val_loader.dataset.samples[i]
+                path, sth = val_loader.dataset.samples[i]
+                print(path, sth)
                 paths.append(path)
                 input_var = torch.autograd.Variable(input).cuda()
                 outputs = []
@@ -189,8 +190,8 @@ def plot_concept_top50(
 
             for i, layer in enumerate(layer_list):
                 arr = list(zip(list(vals[i, :]), list(paths)))
-                print(arr)
                 arr.sort(key=lambda t: t[0], reverse=True)
+                print(arr)
                 # arr.sort(key = lambda t: t[0], reverse = False)
                 # with open('76dim.txt', 'w') as f:
                 #     for item in arr:
@@ -1051,7 +1052,6 @@ def plot_concept_representation(
                 for j in range(n_grid):
                     index = idx_merge[i, j].astype(np.int32)
                     if index >= 0:
-                        print(paths[index])
                         path = paths[index][0]
                         img = Image.open(path).resize(
                             (img_size, img_size),
